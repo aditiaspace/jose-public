@@ -18,7 +18,13 @@ Alur Jobstreet Jose memakai browser Playwright terlihat dengan profil privat khu
 
 ## Instalasi
 
-Buka client yang dapat memakai tool, buka folder privat di OpenCode, lalu tempel prompt di [`prompts/bootstrap.id.md`](prompts/bootstrap.id.md) atau [`prompts/bootstrap.en.md`](prompts/bootstrap.en.md). Setiap prompt sudah berisi link rilis terpercaya dan memandu instalasi ke folder yang sama. Node dan client pilihan harus tersedia untuk chat setup pertama.
+Buka folder privat di OpenCode, lalu tempel prompt ini:
+
+```text
+Pasang Jose dari https://github.com/aditiaspace/jose-public/releases/latest/download/jose-workspace.tgz di folder privat yang sekarang terbuka di OpenCode. Gunakan folder yang sama sebagai workspace Jose; jangan buat folder data kedua. Jika folder ini bagian dari proyek kode bersama, berhenti dan minta saya membuka folder privat. Periksa Node.js 24.15–24.x dan jelaskan/minta izin sebelum memasang atau mengubah instalasi global. Gunakan OpenCode sebagai pilihan awal; tanyakan jika saya memilih Harness. Pasang Jose hanya dari link rilis ini, inisialisasi dan jalankan doctor di folder saat ini, lalu buka Jose di sana. Jangan minta CV atau API key dalam chat setup. Di sesi Jose yang baru, jelaskan pemrosesan data hosted model sebelum membaca CV, lalu pandu onboarding dan minta saya meninjau setiap fakta. Setelah onboarding, minta saya memulai sesi baru di folder yang sama dan mengirim satu lowongan. Jangan upload, melamar, atau submit tanpa approval terpisah.
+```
+
+Untuk instruksi lengkap dalam Bahasa Indonesia atau English, gunakan [bootstrap.id.md](prompts/bootstrap.id.md) atau [bootstrap.en.md](prompts/bootstrap.en.md).
 
 ## Status verifikasi
 

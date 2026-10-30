@@ -18,7 +18,13 @@ Jose's Jobstreet flow uses a dedicated visible Playwright browser through explic
 
 ## Installation
 
-Start a tool-capable client, open a private folder in OpenCode, and paste the prompt in [`prompts/bootstrap.en.md`](prompts/bootstrap.en.md) or [`prompts/bootstrap.id.md`](prompts/bootstrap.id.md). Each prompt contains the trusted release link and guides installation into that same folder. Node and the chosen client must be available for the first setup chat.
+Open a private folder in OpenCode and paste this prompt:
+
+```text
+Install Jose from https://github.com/aditiaspace/jose-public/releases/latest/download/jose-workspace.tgz in this private folder OpenCode currently has open. Use this same folder for my Jose workspace; do not create a second data folder. If it is part of a shared code project, stop and ask me to open a private folder. Check Node.js 24.15–24.x and explain/ask before installing or changing anything globally. Use OpenCode by default; ask if I want Harness instead. Install only from this release link, initialize and run doctor in this current folder, then launch Jose here. Do not ask for my CV or API key in this setup chat. In the new Jose session, explain hosted-model data handling before reading my CV, then guide onboarding and ask me to review each fact. After onboarding, ask me to start a fresh session in this same folder and send one vacancy. Never upload, apply, or submit without separate approval.
+```
+
+For the complete English or Bahasa Indonesia instructions, use [bootstrap.en.md](prompts/bootstrap.en.md) or [bootstrap.id.md](prompts/bootstrap.id.md).
 
 ## Verification status
 
