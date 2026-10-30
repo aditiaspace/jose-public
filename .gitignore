@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tgz
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+.playwright/
+coverage/
+state/
+sources/
+applications/
+browser/
+.jose-workspace/
+.jose-runtime/

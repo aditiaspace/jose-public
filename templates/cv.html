@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Résumé</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #1f2933; }
+    body { margin: 0 auto; max-width: 180mm; font-size: 10.5pt; line-height: 1.45; }
+    header { border-bottom: 1px solid #9aa5b1; margin-bottom: 1.1rem; padding-bottom: 0.65rem; }
+    h1 { font-size: 23pt; line-height: 1.15; margin: 0; }
+    .headline { color: #52606d; font-size: 12pt; margin: 0.3rem 0 0; }
+    section { margin: 1rem 0 0; break-inside: avoid-page; }
+    h2 { border-bottom: 1px solid #cbd2d9; font-size: 11pt; letter-spacing: 0.06em; margin: 0 0 0.4rem; padding-bottom: 0.15rem; text-transform: uppercase; }
+    .claim { margin: 0.25rem 0; orphans: 2; widows: 2; }
+    @media print { body { max-width: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{NAME}}</h1>
+    <p class="headline">{{TITLE}}</p>
+  </header>
+  <main>
+    {{SECTIONS}}
+  </main>
+</body>
+</html>
