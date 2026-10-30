@@ -29,7 +29,7 @@ async function neutralApproval(result) {
 }
 try {
   const source=join(temp,'fictional-cv.txt');const sourceText='Sample Person\nEducation: Bachelor of Design\nProject: Built a prototype for a student project.';writeFileSync(source,sourceText);
-  run('init','--language','id','--client','opencode');
+  run('init','--language','id');
   const imported=run('source-import','--file',source).result;
   const proposed=run('profile-propose','--input',input('profile',{name:'Sample Person',facts:[{category:'project',statement:'Built a prototype for a student project.',sourceId:imported.id,excerpt:'Built a prototype for a student project.'}],preferences:{},openQuestions:['Confirm dates']})).result;
   await neutralApproval(run('review','--kind','profile','--id',proposed.id));

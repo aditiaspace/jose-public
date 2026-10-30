@@ -1,31 +1,32 @@
 # Workspace publik Jose
 
-Jose adalah workspace pencarian kerja lokal dan privat untuk tailoring CV berbasis bukti serta proses lamaran dengan kendali manusia. Installer memakai folder privat yang sedang dibuka di OpenCode sebagai workspace. Pengguna tidak perlu mengelola source code, membuat akun, atau memilih folder data kedua.
+Jose adalah workspace pencarian kerja pribadi dan lokal serta skill untuk agent—bukan tracker SaaS bersama. Jose memakai model dan credential yang sudah dikonfigurasi di harness Anda. Fakta karier, CV, draft, dan riwayat lamaran disimpan di folder privat yang Anda buka.
 
-- [Panduan setup Bahasa Indonesia](SETUP.id.md) · [English setup guide](SETUP.md)
-- Versi client yang ditargetkan: OpenCode **1.18.28** dan DeepSeek Harness **@deepseek-ai/dsh 0.2.1-rc.2**. Sesi DeepSeek live belum terverifikasi.
-- Bahasa percakapan dapat English atau Bahasa Indonesia; CV dan resume yang dibuat selalu dalam Bahasa Inggris. Cover letter secara default berbahasa Inggris; jawaban portal mengikuti pilihan pengguna.
-- Sumber, SQLite, context, file hasil, profil browser, dan kredensial client disimpan di workspace privat. Jangan gunakan folder instalasi Jose publik sebagai workspace.
-- Windows adalah platform pertama yang diverifikasi. Path macOS/Linux dirancang portabel tetapi belum diklaim terverifikasi.
+> **Rilis:** `v0.1.0` adalah preview lama yang terikat ke client tertentu. Gunakan `v0.2.0` atau yang lebih baru; installer memeriksa rilis dan berhenti jika versinya belum tersedia.
 
-## Privasi dan batasan
+- [Panduan Bahasa Indonesia](SETUP.id.md) · [English setup guide](SETUP.md) · [Halaman getting started](https://aditiaspace.github.io/jose-public/)
+- Bahasa percakapan: Bahasa Indonesia atau English. CV dan resume yang dibuat selalu berbahasa Inggris; cover letter secara default English.
+- Entry point skill/instruksi project-level yang didukung: Claude Code, Codex, OpenCode, dan DeepSeek Harness. Model, credential, dan permission tetap disediakan harness aktif.
+- Tidak perlu akun GitHub, fork, Git repository, akun Jose, instalasi client global, API key, atau folder data kedua.
 
-OpenCode dijalankan dengan overlay HOME/XDG data/config privat-workspace, `opencode.json` nonrahasia, conversation sharing dinonaktifkan, allowlist provider hanya DeepSeek, permission yang meminta approval untuk tindakan, akses direktori luar workspace ditolak, dan web-fetch/search ditolak. Harness memakai `DSH_HOME` khusus; overlay yang diperiksa menonaktifkan kontribusi session-log DeepSeek dan ekspor OpenTelemetry yang terpisah, menonaktifkan web tool/provider umum, dan hanya mengaktifkan preset Jose untuk workspace lokal. `jose doctor` memeriksa versi client yang tepat dan konfigurasi privasi efektif sebelum launch; proses berhenti bila pengaturan wajib tidak dapat dibuktikan. Hasil doctor bukan uji kompatibilitas model/provider.
+## Sebelum instalasi
 
-**Data dari hosted provider meninggalkan perangkat ini.** Saat memakai model yang di-host, prompt serta potongan CV/lowongan yang dipilih, context, draft, dan hasil tool dapat dikirim ke provider dan tunduk pada kebijakan provider tersebut. Dua jalur logging/ekspor tambahan Harness dinonaktifkan, tetapi request model biasa tetap meninggalkan perangkat. Jose tidak pernah meminta API key di chat atau argumen command; masukkan key hanya lewat kontrol kredensial interaktif client. Jose tidak memilih model atau mengklaim model/provider tertentu pasti menerima key Anda.
-
-Alur Jobstreet Jose memakai browser Playwright terlihat dengan profil privat khusus, melalui command Jose yang sama di kedua client. Fitur saved-job dan bantuan lamaran sudah diimplementasikan, tetapi perilaku portal live belum terverifikasi. Pengguna sendiri menangani login, CAPTCHA/OTP, dan setiap jawaban faktual; menyetujui disclosure sebelum upload; serta memberi approval final terpisah untuk setiap target submit. Jose tidak boleh mengubah CV utama, profil, visibility, atau boost. Draft maupun upload bukan bukti lamaran sudah dikirim. Generic browser MCP dan desktop computer-use tidak diaktifkan.
+Kalau agent Anda sudah bisa dipakai, lanjutkan dengan agent itu—Jose tidak memilih atau memasang model. Kalau belum punya LLM yang bisa dipakai, halaman getting started menjelaskan opsi OpenCode atau DeepSeek Harness dengan DeepSeek API. Harga dan setup provider dapat berubah, jadi halaman itu menautkan sumber resmi tanpa mengunci angka harga.
 
 ## Instalasi
 
-Buka folder privat di OpenCode, lalu tempel prompt ini:
+Buka **folder privat yang bukan proyek kode bersama** di agent Anda, lalu tempel prompt singkat ini:
 
 ```text
-Pasang Jose dari https://github.com/aditiaspace/jose-public/releases/latest/download/jose-workspace.tgz di folder privat yang sekarang terbuka di OpenCode. Gunakan folder yang sama sebagai workspace Jose; jangan buat folder data kedua. Jika folder ini bagian dari proyek kode bersama, berhenti dan minta saya membuka folder privat. Periksa Node.js 24.15–24.x dan jelaskan/minta izin sebelum memasang atau mengubah instalasi global. Gunakan OpenCode sebagai pilihan awal; tanyakan jika saya memilih Harness. Pasang Jose hanya dari link rilis ini, inisialisasi dan jalankan doctor di folder saat ini, lalu buka Jose di sana. Jangan minta CV atau API key dalam chat setup. Di sesi Jose yang baru, jelaskan pemrosesan data hosted model sebelum membaca CV, lalu pandu onboarding dan minta saya meninjau setiap fakta. Setelah onboarding, minta saya memulai sesi baru di folder yang sama dan mengirim satu lowongan. Jangan upload, melamar, atau submit tanpa approval terpisah.
+Pasang Jose di folder privat ini dengan mengikuti https://raw.githubusercontent.com/aditiaspace/jose-public/main/INSTALL.md.
 ```
 
-Untuk instruksi lengkap dalam Bahasa Indonesia atau English, gunakan [bootstrap.id.md](prompts/bootstrap.id.md) atau [bootstrap.en.md](prompts/bootstrap.en.md).
+CLI Jose dipasang di `.jose/` dalam folder yang sama. Data karier dan riwayat lamaran lokal berada di folder ini juga; Git tidak diperlukan. Jose tidak boleh mengubah pengaturan harness global atau membaca, menyalin, maupun menyimpan credential host. Installer memeriksa bahwa rilis saat ini `v0.2.0` atau lebih baru sebelum inisialisasi.
 
-## Status verifikasi
+## Privasi dan alur kerja
 
-`jose doctor` memeriksa versi/konfigurasi client lokal dan, untuk Harness, memeriksa konfigurasi DSH hasil komposisi tanpa request model. Ia tidak memverifikasi kompatibilitas model DeepSeek, melakukan paid/model call, login ke Jobstreet, atau mengirim lamaran. Perilaku provider dan portal live hanya boleh diuji sendiri oleh pengguna setelah membaca langkah privasi dan approval.
+Sebelum memproses CV atau teks karier pribadi dengan hosted model, Jose menjelaskan bahwa konten terpilih dapat meninggalkan perangkat dan meminta persetujuan. Jika Anda punya CV, Anda bisa mengirimkannya setelah penjelasan itu; jika belum, onboarding mengumpulkan konteks secara bertahap dari jawaban Anda sendiri. Fakta tetap belum dikonfirmasi sampai Anda meninjaunya di halaman review lokal Jose. Jangan menerima perusahaan, tanggal, angka, skill, atau pencapaian yang dikarang.
+
+Kirim lowongan → tinjau dan revisi draft tailor berbahasa Inggris → lamar sendiri lalu laporkan hasilnya ke Jose. Jose hanya mencatat hal yang Anda laporkan atau yang benar-benar terlihat dari alur Jobstreet yang disetujui. Scraper saved jobs Jobstreet dan assisted apply tetap tersedia melalui alur Playwright Jose yang terlihat; login, CAPTCHA/OTP, jawaban faktual, approval disclosure sebelum upload, dan approval final terpisah untuk target tertentu tetap di tangan Anda. Generic browser MCP dan tool computer-use untuk seluruh desktop tidak diaktifkan.
+
+Request hosted model tetap dikirim ke provider pilihan Anda; Jose tidak dapat menjamin kebijakan retensi atau penghapusan provider tersebut. Doctor lokal hanya memeriksa file workspace dan versi Node—bukan menguji model, login Jobstreet, upload file, atau mengirim lamaran. Perilaku live model dan Jobstreet belum terverifikasi.

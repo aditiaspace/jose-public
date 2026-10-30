@@ -16,7 +16,7 @@ function run(root,...args) {
 
 test('review page requires same-origin session and a one-time decision',async t=>{
   const base=mkdtempSync(join(tmpdir(),'jose-review-'));const root=join(base,'workspace');
-  const ws=initWorkspace(root,'id','opencode');
+  const ws=initWorkspace(root,'id');
   ws.write('sources/s1.txt','Built a prototype');
   ws.store.create('sources',{id:'s1',name:'sample.txt',path:'sources/s1.txt',text:'Built a prototype',hash:hash('Built a prototype'),warnings:[],createdAt:'2026-01-01'});
   ws.store.create('profiles',{id:'candidate',name:'Sample Person',facts:[{id:'f1',category:'project',statement:'Built a prototype',sourceId:'s1',excerpt:'Built a prototype',confirmed:false}],preferences:{},openQuestions:[],createdAt:'2026-01-01'});

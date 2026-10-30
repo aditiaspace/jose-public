@@ -1,31 +1,32 @@
 # Jose public workspace
 
-Jose is a private, local job-search workspace that guides an agent through evidence-backed CV tailoring and human-controlled applications. The installer uses the private folder already open in OpenCode as the workspace. Users do not need to manage source code, create an account, or choose a second data folder.
+Jose is a personal, local job-search workspace and agent skill—not a shared SaaS tracker. It uses the AI model and credentials already configured in your current harness. Your career facts, CV, drafts, and application history stay in the private folder you open.
 
-- [English setup guide](SETUP.md) · [Panduan setup Bahasa Indonesia](SETUP.id.md)
-- Target client versions: OpenCode **1.18.28** and DeepSeek Harness **@deepseek-ai/dsh 0.2.1-rc.2**. Live DeepSeek sessions remain unverified.
-- Conversation language is English or Bahasa Indonesia; generated CVs and resumes are always English. Cover letters default to English; portal answers follow the user's choices.
-- Local sources, SQLite state, context, generated files, browser profile, and client credentials live in the private workspace. Do not use the public Jose installation directory as that workspace.
-- Windows is the first verified platform. macOS/Linux paths are designed for portability but are not yet advertised as verified.
+> **Release:** `v0.1.0` is the obsolete client-specific preview. Use the harness-agnostic `v0.2.0` or newer; the installer verifies the release and stops if it is unavailable.
 
-## Privacy and limits
+- [English setup guide](SETUP.md) · [Panduan Bahasa Indonesia](SETUP.id.md) · [Getting-started page](https://aditiaspace.github.io/jose-public/)
+- Conversation language: English or Bahasa Indonesia. Generated CVs and resumes are always English; cover letters default to English.
+- Supported project-level skill/instruction entrypoints: Claude Code, Codex, OpenCode, and DeepSeek Harness. The active harness supplies the model, credentials, and permissions.
+- No GitHub account, fork, Git repository, Jose account, global client install, API key, or second data folder is required.
 
-OpenCode is launched with a workspace-private HOME/XDG data/config overlay, a private non-secret `opencode.json`, conversation sharing disabled, a DeepSeek-only provider allowlist, ask-before-action permissions, denied external-directory access, and web-fetch/search denied. Harness is launched with a dedicated `DSH_HOME`; its checked overlay disables both the DeepSeek session-log contribution and separate OpenTelemetry export, disables generic web tools/providers, and leaves only Jose's local-workspace preset. `jose doctor` checks the exact client version and effective privacy configuration before launch; it fails closed if it cannot prove the required settings. A doctor result is not a model/provider compatibility test.
+## Before installing
 
-**Hosted-provider data leaves this device.** Once you use a hosted model, prompts and selected CV/vacancy text, context, drafts, and tool results may be sent to that provider and are subject to its policies. Harness's two extra logging/export channels are disabled, but ordinary model requests still leave the device. Jose never asks you to put an API key in chat or command arguments; enter it through the client's interactive credential control. Jose does not choose a model or claim that a particular provider/model accepts your key.
+If your agent already works, keep using it—Jose does not select or install a model. If it has no usable LLM, the getting-started page explains the optional OpenCode or DeepSeek Harness path with DeepSeek API. Prices and provider setup can change, so the page links to the official sources instead of hard-coding prices.
 
-Jose's Jobstreet flow uses a dedicated visible Playwright browser through explicit Jose commands, shared by both clients. Saved-job scraping and assisted application are implemented, but live portal behavior remains unverified. The user handles login, CAPTCHA/OTP, and every factual answer; approves disclosure before upload; and gives a separate final approval for each target submission. Jose must not change the primary CV, profile, visibility, or boosts. A draft or upload is not an application report. Generic browser MCP and desktop computer-use tools are not enabled.
+## Install
 
-## Installation
-
-Open a private folder in OpenCode and paste this prompt:
+Open a **private folder that is not a shared code project** in your agent, then paste this short prompt:
 
 ```text
-Install Jose from https://github.com/aditiaspace/jose-public/releases/latest/download/jose-workspace.tgz in this private folder OpenCode currently has open. Use this same folder for my Jose workspace; do not create a second data folder. If it is part of a shared code project, stop and ask me to open a private folder. Check Node.js 24.15–24.x and explain/ask before installing or changing anything globally. Use OpenCode by default; ask if I want Harness instead. Install only from this release link, initialize and run doctor in this current folder, then launch Jose here. Do not ask for my CV or API key in this setup chat. In the new Jose session, explain hosted-model data handling before reading my CV, then guide onboarding and ask me to review each fact. After onboarding, ask me to start a fresh session in this same folder and send one vacancy. Never upload, apply, or submit without separate approval.
+Install Jose in this private folder by following https://raw.githubusercontent.com/aditiaspace/jose-public/main/INSTALL.md.
 ```
 
-For the complete English or Bahasa Indonesia instructions, use [bootstrap.en.md](prompts/bootstrap.en.md) or [bootstrap.id.md](prompts/bootstrap.id.md).
+The installer places Jose's CLI under `.jose/` in this same folder. Career data and local application history are stored alongside it; nothing requires Git. It must not modify global harness settings or read, copy, or store host credentials. The installer checks that the current release is `v0.2.0` or newer before initializing.
 
-## Verification status
+## Privacy and workflow
 
-`jose doctor` verifies local client version/configuration and, for Harness, inspects the actual composed DSH config without a model request. It does not verify DeepSeek model compatibility, make a paid/model call, sign in to Jobstreet, or submit an application. Live provider and portal behavior must be validated by the user in their own account after reading the privacy and approval steps.
+Before processing a CV or other personal career text with a hosted model, Jose explains that selected content may leave the device and asks for consent. If you have a CV, you can share it after that explanation; if not, onboarding gathers context gradually from your own answers. Facts stay unconfirmed until you review them in Jose's local review page. Never accept invented employers, dates, metrics, skills, or achievements.
+
+Send a vacancy → review and revise the English-tailored draft → apply yourself and tell Jose what happened. Jose records only what you report or what its approved Jobstreet workflow visibly confirms. Jobstreet saved-job scraping and assisted apply remain available through Jose's dedicated visible Playwright flow; login, CAPTCHA/OTP, factual answers, disclosure approval before upload, and a separate target-specific final-submit approval stay with you. Generic browser MCP and whole-desktop computer-use tools are not enabled.
+
+Hosted model requests are still sent to the provider you chose; Jose cannot guarantee that provider's retention or deletion practices. The local doctor checks the workspace files and Node version only—it does not test a model, sign into Jobstreet, upload a file, or submit an application. Live model and Jobstreet behavior remain unverified.

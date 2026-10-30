@@ -6,7 +6,7 @@ import { now, id } from './util.js';
 const entity=z.object({id:z.string().min(1)});
 const fact=z.object({id:z.string(),category:z.string(),statement:z.string(),sourceId:z.string(),excerpt:z.string(),confirmed:z.boolean()}).passthrough();
 const schemas:Record<Kind,z.ZodType>={
-  settings:entity.extend({id:z.literal('settings'),workspaceId:z.string().min(1),language:z.enum(['en','id']),timezone:z.string(),client:z.enum(['opencode','harness']),createdAt:z.string(),profileId:z.string().optional(),onboarding:z.enum(['not_started','collecting','awaiting_confirmation','ready'])}).passthrough(),
+  settings:entity.extend({id:z.literal('settings'),workspaceId:z.string().min(1),language:z.enum(['en','id']),timezone:z.string(),createdAt:z.string(),profileId:z.string().optional(),onboarding:z.enum(['not_started','collecting','awaiting_confirmation','ready'])}),
   sources:entity.extend({name:z.string(),path:z.string(),hash:z.string(),text:z.string(),warnings:z.array(z.string()),createdAt:z.string()}).passthrough(),
   profiles:entity.extend({name:z.string(),facts:z.array(fact),preferences:z.record(z.string(),z.string()),openQuestions:z.array(z.string()),createdAt:z.string(),confirmedAt:z.string().optional()}).passthrough(),
   vacancies:entity.extend({company:z.string(),role:z.string(),text:z.string(),url:z.string().optional(),portalId:z.string().optional(),capturedAt:z.string(),lastCheckedAt:z.string().optional(),lifecycle:z.enum(['live','expired','unknown']).optional(),notes:z.string(),possibleDuplicates:z.array(z.string())}).passthrough(),

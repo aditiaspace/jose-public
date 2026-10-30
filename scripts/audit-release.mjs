@@ -12,7 +12,9 @@ const reports=JSON.parse(output);
 if(!Array.isArray(reports)||!Array.isArray(reports[0]?.files))throw new Error('Unable to inspect npm package contents.');
 const files=reports[0].files.map(entry=>entry.path);
 const bad=[];
-const forbiddenPath=/(^|\/)(\.git|\.env(?:\.|$)|\.dev\.vars|node_modules|browser|state|sources|applications|\.jose-runtime)(\/|$)|\.(?:sqlite(?:-wal|-shm)?|pem|key)$/i;
+const requiredFiles=['INSTALL.md','README.md','README.id.md','SETUP.md','SETUP.id.md','instructions/neutral.md','prompts/bootstrap.en.md','prompts/bootstrap.id.md','prompts/setup.en.md','prompts/setup.id.md','skills/jose/SKILL.md'];
+for(const file of requiredFiles)if(!files.includes(file))bad.push(`${file}: required installer asset missing`);
+const forbiddenPath=/(^|\/)(\.git|\.env(?:\.|$)|\.dev\.vars|node_modules|\.jose|browser|state|sources|applications|client-config|\.jose-runtime)(\/|$)|\.(?:sqlite(?:-wal|-shm)?|pem|key)$/i;
 const secretPatterns=[/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,/\b(?:sk-[A-Za-z0-9_-]{24,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})\b/];
 for(const file of files) {
   if(forbiddenPath.test(file))bad.push(`${file}: private or runtime path`);

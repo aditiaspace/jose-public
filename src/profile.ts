@@ -108,7 +108,7 @@ export function getContext(ws: Workspace): Record<string, unknown> {
 
   return {
     schemaVersion: 1,
-    workspace: { language: settings.language, client: settings.client, onboarding: settings.onboarding },
+    workspace: { language: settings.language, onboarding: settings.onboarding },
     profileId: current?.confirmedAt ? current.id : null,
     identity: current?.confirmedAt ? { name: current.name } : null,
     facts,

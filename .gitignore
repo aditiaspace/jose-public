@@ -8,6 +8,7 @@ dist/
 *.sqlite-*
 .playwright/
 coverage/
+.jose/
 state/
 sources/
 applications/

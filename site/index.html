@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A private, local job-search workspace that helps you learn to work with an AI agent.">
+  <title>Jose — job search, with an agent</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f2eb;
+      --surface: #fffefa;
+      --ink: #1e302e;
+      --muted: #667572;
+      --line: #d8ded8;
+      --green: #1a6556;
+      --green-dark: #154a40;
+      --green-pale: #e3eee8;
+      --amber: #fff0cf;
+      --amber-line: #e8c677;
+      --white: #fff;
+      --shadow: 0 18px 48px rgb(36 53 47 / 8%);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--green); text-underline-offset: .18em; }
+    a:hover { color: var(--green-dark); }
+    button { font: inherit; }
+    .wrap { width: min(1080px, calc(100% - 40px)); margin-inline: auto; }
+    .skip-link { position: absolute; left: -10000px; top: 0; }
+    .skip-link:focus { left: 12px; top: 12px; z-index: 10; padding: 10px 14px; background: var(--surface); }
+    header { border-bottom: 1px solid var(--line); }
+    .nav { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: .07em; }
+    .brand-mark { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 12px 12px 12px 4px; background: var(--green); color: var(--white); letter-spacing: 0; }
+    .brand small { display: block; color: var(--muted); font-weight: 600; letter-spacing: .01em; font-size: 11px; line-height: 1.2; }
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+    .nav-links { display: flex; gap: 20px; font-size: 14px; }
+    .nav-links a { color: var(--muted); text-decoration: none; }
+    .language { display: inline-flex; gap: 3px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+    .language button { padding: 5px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 750; }
+    .language button[aria-pressed="true"] { background: var(--green); color: var(--white); }
+    .lang[hidden] { display: none !important; }
+    main { padding: 28px 0 72px; }
+    .release-note { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; padding: 16px 19px; background: var(--amber); border: 1px solid var(--amber-line); border-radius: 14px; font-size: 14px; }
+    .release-note strong { color: #684a12; }
+    .release-note p { margin: 0; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .85fr); align-items: center; gap: 58px; padding: 72px 0 64px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 690px; margin-bottom: 20px; font-size: clamp(42px, 6.3vw, 72px); line-height: .99; letter-spacing: -.065em; }
+    h1 em { color: var(--green); font-style: normal; }
+    .hero-copy { max-width: 610px; margin-bottom: 27px; color: var(--muted); font-size: 19px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px 18px; border: 0; border-radius: 9px; background: var(--green); color: var(--white); font-weight: 750; text-decoration: none; cursor: pointer; }
+    .button:hover { background: var(--green-dark); color: var(--white); }
+    .hero-card { position: relative; padding: 28px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); }
+    .hero-card::before { content: ""; position: absolute; width: 170px; height: 170px; right: -66px; top: -74px; border-radius: 50%; background: var(--green-pale); }
+    .hero-card h2 { position: relative; margin: 10px 0 12px; font-size: 21px; letter-spacing: -.03em; }
+    .hero-card ul { position: relative; margin: 0; padding-left: 19px; color: var(--muted); }
+    .hero-card li + li { margin-top: 8px; }
+    .hero-icon { position: relative; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px 14px 14px 5px; background: var(--green-pale); color: var(--green-dark); font-weight: 850; }
+    section { scroll-margin-top: 28px; }
+    .section-head { max-width: 690px; margin-bottom: 25px; }
+    .section-head h2 { margin: 8px 0 10px; font-size: clamp(28px, 4vw, 40px); line-height: 1.12; letter-spacing: -.045em; }
+    .section-head p { color: var(--muted); margin-bottom: 0; }
+    .learning { padding: 28px 0 66px; }
+    .three-grid, .two-grid, .guide-grid { display: grid; gap: 16px; }
+    .three-grid { grid-template-columns: repeat(3, 1fr); }
+    .two-grid { grid-template-columns: repeat(2, 1fr); }
+    .guide-grid { grid-template-columns: repeat(2, 1fr); }
+    .card { padding: 23px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+    .card h3 { margin: 10px 0 8px; font-size: 19px; line-height: 1.25; letter-spacing: -.025em; }
+    .card p, .card li { color: var(--muted); }
+    .card p:last-child, .card ul:last-child, .card ol:last-child { margin-bottom: 0; }
+    .step { color: var(--green); font-size: 12px; font-weight: 850; letter-spacing: .08em; }
+    .choose { padding: 54px 0; border-top: 1px solid var(--line); }
+    .path-card { min-height: 205px; }
+    .path-card .tag { display: inline-block; padding: 4px 9px; border-radius: 999px; background: var(--green-pale); color: var(--green-dark); font-size: 11px; font-weight: 800; }
+    .path-card p { margin-bottom: 0; }
+    .tutorials { padding: 44px 0 58px; border-top: 1px solid var(--line); }
+    .guide-card ol { padding-left: 21px; }
+    .guide-card li + li { margin-top: 8px; }
+    .link-row { display: flex; flex-wrap: wrap; gap: 8px 17px; margin-top: 16px; font-size: 14px; font-weight: 700; }
+    .cost-note { margin-top: 18px; padding: 15px 18px; border-left: 3px solid var(--green); background: var(--green-pale); color: var(--green-dark); border-radius: 0 10px 10px 0; font-size: 14px; }
+    .install { margin-top: 10px; padding: 32px; background: var(--ink); color: var(--white); border-radius: 20px; box-shadow: var(--shadow); }
+    .install .eyebrow { color: #a7d4c1; }
+    .install h2 { margin: 8px 0 10px; font-size: 34px; letter-spacing: -.045em; }
+    .install p { color: #d1ded9; }
+    .prompt-box { position: relative; padding: 21px; border: 1px solid #5e7771; background: #263d39; border-radius: 12px; }
+    .prompt-box pre { margin: 0; padding-right: 125px; color: #fff; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .prompt-box button { position: absolute; top: 15px; right: 15px; padding: 8px 12px; border: 1px solid #9ebbb1; border-radius: 7px; color: var(--white); background: transparent; cursor: pointer; font-size: 13px; font-weight: 750; }
+    .prompt-box button:hover { background: #385750; }
+    .copy-status { min-height: 24px; margin: 8px 0 0; color: #b7d9cb !important; font-size: 13px; }
+    .install-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 15px; color: #d1ded9; font-size: 13px; }
+    .privacy { padding: 44px 0 10px; }
+    .privacy-card { padding: 23px 25px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .privacy-card h2 { margin: 0 0 8px; font-size: 22px; }
+    .privacy-card p { margin-bottom: 0; color: var(--muted); }
+    footer { padding: 24px 0 36px; color: var(--muted); font-size: 13px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
+    code { padding: 2px 5px; border-radius: 4px; background: #edf0eb; color: var(--green-dark); font-size: .93em; }
+    @media (max-width: 760px) {
+      .nav { min-height: 66px; }
+      .nav-links { display: none; }
+      .nav-right { gap: 10px; }
+      .hero { grid-template-columns: 1fr; gap: 30px; padding: 54px 0 45px; }
+      .hero-card { max-width: 500px; }
+      .three-grid, .two-grid, .guide-grid { grid-template-columns: 1fr; }
+      .learning { padding-bottom: 42px; }
+      .choose, .tutorials { padding-block: 38px; }
+      .install { padding: 24px 19px; }
+      .prompt-box pre { padding: 42px 0 0; }
+      .prompt-box button { top: 12px; right: 12px; }
+      footer .wrap { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body data-language="en">
+  <a class="skip-link" href="#main"><span class="lang" lang="en" data-lang="en">Skip to content</span><span class="lang" lang="id" data-lang="id" hidden>Lewati ke konten</span></a>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="#top" aria-label="Jose home"><span class="brand-mark">J</span><span>JOSE<small>PERSONAL JOB SEARCH</small></span></a>
+      <div class="nav-right">
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a href="#approach"><span class="lang" lang="en" data-lang="en">How it works</span><span class="lang" lang="id" data-lang="id" hidden>Cara kerja</span></a>
+          <a href="#choose"><span class="lang" lang="en" data-lang="en">Get started</span><span class="lang" lang="id" data-lang="id" hidden>Mulai</span></a>
+        </nav>
+        <div class="language" role="group" aria-label="Page language">
+          <button type="button" data-set-language="en" aria-pressed="true">EN</button>
+          <button type="button" data-set-language="id" aria-pressed="false">ID</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="wrap" id="main">
+    <div class="release-note" role="status">
+      <strong><span class="lang" lang="en" data-lang="en">Note</span><span class="lang" lang="id" data-lang="id" hidden>Catatan</span></strong>
+      <p>
+        <span class="lang" lang="en" data-lang="en">The public `v0.1.0` release is the old client-specific installer. This page is for Jose `v0.2.0+`; the installer will stop if that release is unavailable.</span>
+        <span class="lang" lang="id" data-lang="id" hidden>Rilis publik `v0.1.0` adalah installer lama yang terikat pada client. Halaman ini untuk Jose `v0.2.0+`; installer akan berhenti jika rilis tersebut belum tersedia.</span>
+      </p>
+    </div>
+
+    <section class="hero" id="top">
+      <div>
+        <span class="eyebrow"><span class="lang" lang="en" data-lang="en">A private workspace for real job searches</span><span class="lang" lang="id" data-lang="id" hidden>Workspace privat untuk mencari kerja sungguhan</span></span>
+        <h1><span class="lang" lang="en" data-lang="en">Move your job search forward, <em>with an agent.</em></span><span class="lang" lang="id" data-lang="id" hidden>Lanjutkan pencarian kerja, <em>bareng agent.</em></span></h1>
+        <p class="hero-copy"><span class="lang" lang="en" data-lang="en">Jose helps you give useful context, delegate the right work, check the result, and stay in charge of every application.</span><span class="lang" lang="id" data-lang="id" hidden>Jose membantu Anda memberi konteks, mendelegasikan pekerjaan yang tepat, memeriksa hasil, dan tetap memegang kendali atas setiap lamaran.</span></p>
+        <a class="button" href="#choose"><span class="lang" lang="en" data-lang="en">Choose your starting point</span><span class="lang" lang="id" data-lang="id" hidden>Pilih cara memulai</span><span aria-hidden="true">→</span></a>
+      </div>
+      <aside class="hero-card">
+        <div class="hero-icon" aria-hidden="true">J</div>
+        <h2><span class="lang" lang="en" data-lang="en">Your folder. Your agent. Your call.</span><span class="lang" lang="id" data-lang="id" hidden>Folder Anda. Agent Anda. Keputusan Anda.</span></h2>
+        <ul>
+          <li><span class="lang" lang="en" data-lang="en">Private files and application history stay local</span><span class="lang" lang="id" data-lang="id" hidden>File privat dan riwayat lamaran tersimpan lokal</span></li>
+          <li><span class="lang" lang="en" data-lang="en">Use the AI harness and model you already have</span><span class="lang" lang="id" data-lang="id" hidden>Gunakan harness dan model AI yang sudah Anda punya</span></li>
+          <li><span class="lang" lang="en" data-lang="en">Review facts and drafts before they are used</span><span class="lang" lang="id" data-lang="id" hidden>Tinjau fakta dan draft sebelum digunakan</span></li>
+          <li><span class="lang" lang="en" data-lang="en">Capture saved Jobstreet jobs and get approval-gated help in a visible browser</span><span class="lang" lang="id" data-lang="id" hidden>Ambil saved jobs Jobstreet dan dapatkan bantuan apply lewat browser yang terlihat serta approval</span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="learning" id="approach">
+      <div class="section-head">
+        <span class="eyebrow"><span class="lang" lang="en" data-lang="en">A real task, a better way to work</span><span class="lang" lang="id" data-lang="id" hidden>Tugas nyata, cara kerja yang lebih baik</span></span>
+        <h2><span class="lang" lang="en" data-lang="en">Learn agentic AI while making progress.</span><span class="lang" lang="id" data-lang="id" hidden>Belajar agentic AI sambil terus maju.</span></h2>
+        <p><span class="lang" lang="en" data-lang="en">Job searching gives you a practical place to learn how to work with an AI agent—without handing it the decisions that belong to you.</span><span class="lang" lang="id" data-lang="id" hidden>Pencarian kerja memberi Anda ruang praktik untuk bekerja dengan AI agent—tanpa menyerahkan keputusan yang seharusnya tetap milik Anda.</span></p>
+      </div>
+      <div class="three-grid">
+        <article class="card"><span class="step">01 / CONTEXT</span><h3><span class="lang" lang="en" data-lang="en">Teach it what matters</span><span class="lang" lang="id" data-lang="id" hidden>Beri konteks yang penting</span></h3><p><span class="lang" lang="en" data-lang="en">Start with your CV if you have one, or build your career facts gradually in conversation.</span><span class="lang" lang="id" data-lang="id" hidden>Mulai dari CV jika ada, atau bangun fakta karier sedikit demi sedikit lewat percakapan.</span></p></article>
+        <article class="card"><span class="step">02 / DELEGATE</span><h3><span class="lang" lang="en" data-lang="en">Delegate, then verify</span><span class="lang" lang="id" data-lang="id" hidden>Delegasikan, lalu verifikasi</span></h3><p><span class="lang" lang="en" data-lang="en">Ask Jose to tailor a resume to a real vacancy. Check every claim against your own experience.</span><span class="lang" lang="id" data-lang="id" hidden>Minta Jose menyesuaikan resume ke lowongan nyata. Periksa setiap klaim dengan pengalaman Anda.</span></p></article>
+        <article class="card"><span class="step">03 / APPROVE</span><h3><span class="lang" lang="en" data-lang="en">Keep the important choices</span><span class="lang" lang="id" data-lang="id" hidden>Pertahankan keputusan penting</span></h3><p><span class="lang" lang="en" data-lang="en">Review the draft, decide whether to apply, and separately approve any upload or final Jobstreet submission.</span><span class="lang" lang="id" data-lang="id" hidden>Tinjau draft, putuskan apakah akan melamar, dan setujui upload atau submit final Jobstreet secara terpisah.</span></p></article>
+      </div>
+    </section>
+
+    <section class="choose" id="choose">
+      <div class="section-head">
+        <span class="eyebrow"><span class="lang" lang="en" data-lang="en">Before you install</span><span class="lang" lang="id" data-lang="id" hidden>Sebelum memasang</span></span>
+        <h2><span class="lang" lang="en" data-lang="en">Do you already have an AI agent?</span><span class="lang" lang="id" data-lang="id" hidden>Anda sudah punya AI agent?</span></h2>
+        <p><span class="lang" lang="en" data-lang="en">Jose is harness-agnostic. A configured agent is the simplest path; a DeepSeek setup is optional if you need an affordable way to start.</span><span class="lang" lang="id" data-lang="id" hidden>Jose tidak terikat ke satu harness. Agent yang sudah dikonfigurasi adalah cara termudah; setup DeepSeek hanya opsi jika Anda membutuhkan cara mulai yang lebih terjangkau.</span></p>
+      </div>
+      <div class="two-grid">
+        <article class="card path-card">
+          <span class="tag"><span class="lang" lang="en" data-lang="en">RECOMMENDED IF READY</span><span class="lang" lang="id" data-lang="id" hidden>DISARANKAN JIKA SUDAH SIAP</span></span>
+          <h3><span class="lang" lang="en" data-lang="en">I already use Claude Code, Codex, OpenCode, or another agent</span><span class="lang" lang="id" data-lang="id" hidden>Saya sudah memakai Claude Code, Codex, OpenCode, atau agent lain</span></h3>
+          <p><span class="lang" lang="en" data-lang="en">Keep it. Jose uses the LLM and credentials already configured there. No extra API key, client, or account is needed for Jose.</span><span class="lang" lang="id" data-lang="id" hidden>Lanjutkan. Jose memakai LLM dan credential yang sudah dikonfigurasi di sana. Jose tidak membutuhkan API key, client, atau akun tambahan.</span></p>
+        </article>
+        <article class="card path-card">
+          <span class="tag"><span class="lang" lang="en" data-lang="en">OPTIONAL LOW-COST PATH</span><span class="lang" lang="id" data-lang="id" hidden>OPSIONAL UNTUK MEMULAI DENGAN BIAYA RENDAH</span></span>
+          <h3><span class="lang" lang="en" data-lang="en">I need an agent and a model</span><span class="lang" lang="id" data-lang="id" hidden>Saya belum punya agent dan model</span></h3>
+          <p><span class="lang" lang="en" data-lang="en">Set up OpenCode or DeepSeek Harness first, then connect DeepSeek API if you choose. Check current API prices and add only the balance you are comfortable spending.</span><span class="lang" lang="id" data-lang="id" hidden>Siapkan OpenCode atau DeepSeek Harness terlebih dahulu, lalu hubungkan DeepSeek API jika memilihnya. Periksa harga saat ini dan isi saldo sesuai jumlah yang nyaman Anda belanjakan.</span></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="tutorials" id="tutorials">
+      <div class="section-head">
+        <span class="eyebrow"><span class="lang" lang="en" data-lang="en">Optional setup tutorials</span><span class="lang" lang="id" data-lang="id" hidden>Tutorial setup opsional</span></span>
+        <h2><span class="lang" lang="en" data-lang="en">Choose a harness before installing Jose.</span><span class="lang" lang="id" data-lang="id" hidden>Pilih harness sebelum memasang Jose.</span></h2>
+        <p><span class="lang" lang="en" data-lang="en">These are optional routes, not Jose requirements. If you already have a model, skip this section.</span><span class="lang" lang="id" data-lang="id" hidden>Ini jalur opsional, bukan syarat Jose. Kalau Anda sudah punya model, lewati bagian ini.</span></p>
+      </div>
+      <div class="guide-grid">
+        <article class="card guide-card">
+          <span class="step">OPTION A</span>
+          <h3>OpenCode + DeepSeek API</h3>
+          <ol>
+            <li><span class="lang" lang="en" data-lang="en">Install OpenCode from its official guide and open a private folder. If another provider already works, keep using it.</span><span class="lang" lang="id" data-lang="id" hidden>Pasang OpenCode dari panduan resminya lalu buka folder privat. Jika provider lain sudah berfungsi, tetap gunakan provider itu.</span></li>
+            <li><span class="lang" lang="en" data-lang="en">For DeepSeek, create an account and API key on the official platform. Review pricing and balance/top-up information first.</span><span class="lang" lang="id" data-lang="id" hidden>Untuk DeepSeek, buat akun dan API key di platform resminya. Tinjau harga dan informasi saldo/top-up terlebih dahulu.</span></li>
+            <li><span class="lang" lang="en" data-lang="en">In a terminal, run <code>opencode auth login</code>, choose DeepSeek in the interactive provider flow, and enter the key there—not in chat, Jose files, or command arguments.</span><span class="lang" lang="id" data-lang="id" hidden>Di terminal, jalankan <code>opencode auth login</code>, pilih DeepSeek melalui alur provider interaktif, lalu masukkan key di sana—bukan di chat, file Jose, atau argumen command.</span></li>
+          </ol>
+          <div class="link-row"><a href="https://opencode.ai/docs/" target="_blank" rel="noreferrer">OpenCode install ↗</a><a href="https://opencode.ai/docs/providers" target="_blank" rel="noreferrer">Provider guide ↗</a></div>
+        </article>
+        <article class="card guide-card">
+          <span class="step">OPTION B</span>
+          <h3>DeepSeek Harness + DeepSeek API</h3>
+          <ol>
+            <li><span class="lang" lang="en" data-lang="en">Install DeepSeek Harness using its official quickstart, then open its local interface.</span><span class="lang" lang="id" data-lang="id" hidden>Pasang DeepSeek Harness mengikuti quickstart resmi, lalu buka antarmuka lokalnya.</span></li>
+            <li><span class="lang" lang="en" data-lang="en">Create a DeepSeek API key on the official platform and review current prices and balance/top-up information.</span><span class="lang" lang="id" data-lang="id" hidden>Buat API key DeepSeek di platform resmi dan tinjau harga serta informasi saldo/top-up terbaru.</span></li>
+            <li><span class="lang" lang="en" data-lang="en">In Harness, open <strong>Settings → Models</strong>, choose DeepSeek, and enter the key in its provider setting. Do not paste it into a Jose conversation or project file.</span><span class="lang" lang="id" data-lang="id" hidden>Di Harness, buka <strong>Settings → Models</strong>, pilih DeepSeek, lalu masukkan key pada pengaturan provider. Jangan tempel ke percakapan atau file project Jose.</span></li>
+          </ol>
+          <div class="link-row"><a href="https://deepseek-harness.github.io/deepseek-harness/en/guide/quickstart" target="_blank" rel="noreferrer">Harness quickstart ↗</a><a href="https://deepseek-harness.github.io/deepseek-harness/en/guide/providers" target="_blank" rel="noreferrer">Provider guide ↗</a></div>
+        </article>
+      </div>
+      <div class="cost-note"><span class="lang" lang="en" data-lang="en">DeepSeek API usage may incur charges. Check current pricing, balance, and top-up rules on DeepSeek's own pages; there is no price guarantee here. Store the key only in your chosen harness. Jose never collects it.</span><span class="lang" lang="id" data-lang="id" hidden>Penggunaan DeepSeek API dapat dikenakan biaya. Periksa harga, saldo, dan aturan top-up terbaru di halaman resmi DeepSeek; halaman ini tidak menjamin harga. Simpan key hanya di harness pilihan Anda. Jose tidak pernah mengumpulkannya.</span><div class="link-row"><a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform ↗</a><a href="https://api-docs.deepseek.com/quick_start/pricing/" target="_blank" rel="noreferrer">Current pricing ↗</a><a href="https://api-docs.deepseek.com/api/get-user-balance/" target="_blank" rel="noreferrer">Balance info ↗</a></div></div>
+    </section>
+
+    <section class="install" id="install">
+      <span class="eyebrow"><span class="lang" lang="en" data-lang="en">One short prompt</span><span class="lang" lang="id" data-lang="id" hidden>Satu prompt singkat</span></span>
+      <h2><span class="lang" lang="en" data-lang="en">Install Jose in your current folder.</span><span class="lang" lang="id" data-lang="id" hidden>Pasang Jose di folder yang sedang Anda gunakan.</span></h2>
+      <p><span class="lang" lang="en" data-lang="en">Open a private folder in the harness you chose. No fork or GitHub account is needed. The agent will ask for your language and install permission, then use this same folder for Jose.</span><span class="lang" lang="id" data-lang="id" hidden>Buka folder privat di harness pilihan Anda. Tidak perlu fork atau akun GitHub. Agent akan menanyakan bahasa dan izin instalasi, lalu memakai folder yang sama untuk Jose.</span></p>
+      <div class="prompt-box">
+        <pre id="install-prompt" aria-live="polite"></pre>
+        <button type="button" id="copy-prompt"><span class="lang" lang="en" data-lang="en">Copy prompt</span><span class="lang" lang="id" data-lang="id" hidden>Salin prompt</span></button>
+      </div>
+      <p class="copy-status" id="copy-status" role="status" aria-live="polite"></p>
+      <div class="install-foot">
+        <span><span class="lang" lang="en" data-lang="en">CV optional; onboarding can start with a conversation.</span><span class="lang" lang="id" data-lang="id" hidden>CV opsional; onboarding bisa dimulai lewat percakapan.</span></span>
+        <span><span class="lang" lang="en" data-lang="en">Jose does not ask for API keys or change global settings.</span><span class="lang" lang="id" data-lang="id" hidden>Jose tidak meminta API key atau mengubah pengaturan global.</span></span>
+      </div>
+    </section>
+
+    <section class="privacy">
+      <div class="privacy-card">
+        <h2><span class="lang" lang="en" data-lang="en">This page does not collect your data.</span><span class="lang" lang="id" data-lang="id" hidden>Halaman ini tidak mengumpulkan data Anda.</span></h2>
+        <p><span class="lang" lang="en" data-lang="en">This is a static page: no login, form, analytics, or backend. Do not enter a CV or API key here. Jose stores your workspace locally; if you use a hosted model, selected text can be sent to that provider only after Jose explains the data handling and asks for consent.</span><span class="lang" lang="id" data-lang="id" hidden>Ini halaman statis: tanpa login, form, analytics, atau backend. Jangan masukkan CV atau API key di sini. Jose menyimpan workspace secara lokal; jika memakai hosted model, teks terpilih dapat dikirim ke provider setelah Jose menjelaskan pemrosesan data dan meminta persetujuan.</span></p>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap"><span>Jose · <span class="lang" lang="en" data-lang="en">Personal job-search workspace</span><span class="lang" lang="id" data-lang="id" hidden>Workspace pencarian kerja pribadi</span></span><span><a href="https://github.com/aditiaspace/jose-public">GitHub repository ↗</a></span></div></footer>
+  <script>
+    const installer = 'https://raw.githubusercontent.com/aditiaspace/jose-public/main/INSTALL.md';
+    const prompts = {
+      en: `Install Jose in this private folder by following ${installer}.`,
+      id: `Pasang Jose di folder privat ini dengan mengikuti ${installer}.`
+    };
+    let language = 'en';
+    const promptNode = document.querySelector('#install-prompt');
+    const statusNode = document.querySelector('#copy-status');
+    function setLanguage(value) {
+      language = value;
+      document.documentElement.lang = value;
+      document.body.dataset.language = value;
+      document.querySelectorAll('[data-lang]').forEach(node => { node.hidden = node.dataset.lang !== value; });
+      document.querySelectorAll('[data-set-language]').forEach(button => { button.setAttribute('aria-pressed', String(button.dataset.setLanguage === value)); });
+      promptNode.textContent = prompts[value];
+      statusNode.textContent = '';
+    }
+    document.querySelectorAll('[data-set-language]').forEach(button => button.addEventListener('click', () => setLanguage(button.dataset.setLanguage)));
+    document.querySelector('#copy-prompt').addEventListener('click', async () => {
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(prompts[language]);
+          copied = true;
+        }
+      } catch {}
+      if (!copied) {
+        const helper = document.createElement('textarea');
+        helper.value = prompts[language];
+        helper.setAttribute('readonly', '');
+        helper.style.position = 'fixed';
+        helper.style.opacity = '0';
+        document.body.append(helper);
+        helper.select();
+        try { copied = document.execCommand('copy'); } catch { copied = false; }
+        helper.remove();
+      }
+      statusNode.textContent = copied
+        ? language === 'id' ? 'Prompt disalin.' : 'Prompt copied.'
+        : language === 'id' ? 'Gagal menyalin. Pilih dan salin prompt secara manual.' : 'Copy failed. Select and copy the prompt manually.';
+    });
+    setLanguage(language);
+  </script>
+</body>
+</html>

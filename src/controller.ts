@@ -160,7 +160,7 @@ export async function ensureController(ws:Workspace):Promise<Metadata> {
     const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>!/(?:API_KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/i.test(key) && key!=='NODE_OPTIONS'));
     const child=spawn(process.execPath,[entry,'serve','--workspace',ws.root],{detached:true,stdio:'ignore',windowsHide:true,env});child.unref();
     for(let i=0;i<150;i++){const m=await readEndpoint(ws);if(m)return m;await pause(100);}
-    throw new Error('The local review service failed to start. Run jose serve to inspect the error.');
+    throw new Error('The local review service failed to start. Run node .jose/node_modules/jose-workspace/dist/cli.js serve --workspace . from the workspace root to inspect the error.');
   }finally{try{unlinkSync(lock);}catch{/* already removed */}}
 }
 export async function controllerOperation(ws:Workspace,operation:string,data:Record<string,unknown>={}):Promise<Record<string,unknown>> {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-10-30
+
+- Replace the OpenCode/DeepSeek-Harness-specific launcher with a local, harness-agnostic Jose skill and CLI install in the user's current private folder; reuse the active harness's LLM and credentials without reading or changing them.
+- Add project-level skill/instruction entrypoints for Claude Code, Codex, OpenCode, and DeepSeek Harness, with English and Bahasa Indonesia onboarding and English CV/resume artifacts.
+- Make CV optional and support gradual conversational intake saved as user-approved, source-backed private notes; keep every proposed fact unconfirmed until local review.
+- Keep local application recording, Jobstreet saved-job scraping, visible Playwright assisted apply, and separate disclosure/final-submit approvals.
+- Add a bilingual static getting-started page with optional OpenCode and DeepSeek Harness/DeepSeek API tutorials, deployed through GitHub Pages without a backend or credential collection.
+- Retire the `v0.1.0` client-specific installer; the new installer requires a `v0.2.0` or newer release before initialization.
+
 ## 0.1.0 — 2026-10-30
 
 - Add private, idempotent client configuration, launch, and doctor flows for OpenCode 1.18.28 and DeepSeek Harness 0.2.1-rc.2.

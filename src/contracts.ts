@@ -1,9 +1,8 @@
 export type Language = 'en' | 'id';
-export type Client = 'opencode' | 'harness';
 export type Kind = 'settings' | 'sources' | 'profiles' | 'vacancies' | 'materials' | 'approvals' | 'attempts';
 export interface Entity { id: string; }
 export interface Settings extends Entity {
-  id: 'settings'; workspaceId: string; language: Language; timezone: string; client: Client;
+  id: 'settings'; workspaceId: string; language: Language; timezone: string;
   createdAt: string; profileId?: string; onboarding: 'not_started' | 'collecting' | 'awaiting_confirmation' | 'ready';
 }
 export interface Source extends Entity { name: string; path: string; hash: string; text: string; warnings: string[]; createdAt: string; }

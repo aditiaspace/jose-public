@@ -8,7 +8,7 @@ import { readJson } from './util.js';
 import { importSource } from './documents.js';
 import { proposeProfile, getContext, refreshContext } from './profile.js';
 import { captureVacancy, createMaterial, exportMaterial } from './materials.js';
-import { configureClient, launchClient, clientDoctor, stopClient } from './clients.js';
+import { configureWorkspace, workspaceDoctor } from './skills.js';
 import { reportApplication, listApplications, applicationHistory } from './recording.js';
 import { exportBackup, restoreBackup } from './backup.js';
 import { bindingFor, requestApproval, verifyMaterial } from './approval.js';
@@ -18,8 +18,8 @@ const help=`Jose — private local job-search workspace
 
 Usage: jose <operation> --workspace <private-directory> [options]
 
-  init --language en|id --client opencode|harness
-  doctor | context | language-set --language en|id | client-launch --client opencode|harness | client-stop
+  init --language en|id
+  doctor | context | language-set --language en|id
   source-import --file <CV> | profile-propose --input <JSON>
   vacancy-add --input <JSON> | vacancy-list
   material-create --input <JSON> | material-export --id <material> --out <directory>
@@ -38,27 +38,24 @@ function required(value:string|undefined,name:string):string {if(!value?.trim())
 function jsonInput(path:string|undefined):unknown {return readJson(resolve(required(path,'--input')));}
 
 async function main():Promise<void> {
-  const args=parseArgs({args:process.argv.slice(2),allowPositionals:true,strict:true,options:{workspace:{type:'string'},input:{type:'string'},file:{type:'string'},id:{type:'string'},kind:{type:'string'},out:{type:'string'},language:{type:'string'},client:{type:'string'},help:{type:'boolean',short:'h'}}});
+  const args=parseArgs({args:process.argv.slice(2),allowPositionals:true,strict:true,options:{workspace:{type:'string'},input:{type:'string'},file:{type:'string'},id:{type:'string'},kind:{type:'string'},out:{type:'string'},language:{type:'string'},help:{type:'boolean',short:'h'}}});
   const op=args.positionals[0];if(args.values.help||!op||op==='help'){process.stdout.write(help);return;}
   if(args.positionals.length!==1)throw new Error('Supply exactly one operation.');
   const root=resolve(required(args.values.workspace,'--workspace'));
   const language=args.values.language===undefined?undefined:z.enum(['en','id']).parse(args.values.language);
-  const client=args.values.client===undefined?undefined:z.enum(['opencode','harness']).parse(args.values.client);
-  if(op==='backup-restore') {const restored=await restoreBackup(resolve(required(args.values.file,'--file')),root);try{configureClient(restored,restored.settings().client);refreshContext(restored);process.stdout.write(JSON.stringify({ok:true,workspace:restored.root,workspaceId:restored.settings().workspaceId,restored:true})+'\n');}finally{restored.close();}return;}
+  if(op==='backup-restore') {const restored=await restoreBackup(resolve(required(args.values.file,'--file')),root);try{configureWorkspace(restored);refreshContext(restored);process.stdout.write(JSON.stringify({ok:true,workspace:restored.root,workspaceId:restored.settings().workspaceId,restored:true})+'\n');}finally{restored.close();}return;}
   if(op==='init') {
-    if(!language||!client)throw new Error('Choose --language en|id and --client opencode|harness.');
-    const ws=initWorkspace(root,language,client);try{configureClient(ws,client);process.stdout.write(JSON.stringify({ok:true,workspace:ws.root,workspaceId:ws.settings().workspaceId,language:ws.settings().language,client:ws.settings().client,onboarding:ws.settings().onboarding})+'\n');}finally{ws.close();}return;
+    if(!language)throw new Error('Choose --language en|id.');
+    const ws=initWorkspace(root,language);try{configureWorkspace(ws);process.stdout.write(JSON.stringify({ok:true,workspace:ws.root,workspaceId:ws.settings().workspaceId,language:ws.settings().language,onboarding:ws.settings().onboarding})+'\n');}finally{ws.close();}return;
   }
   const ws=new Workspace(root);
   if(op==='serve'){await startController(ws);return;}
   try {
     let result:unknown;
     switch(op) {
-      case 'doctor':result={workspace:ws.root,workspaceId:ws.settings().workspaceId,node:process.version,client:clientDoctor(ws),onboarding:ws.settings().onboarding};break;
+      case 'doctor':result={workspace:ws.root,workspaceId:ws.settings().workspaceId,node:process.version,...workspaceDoctor(ws),onboarding:ws.settings().onboarding};break;
       case 'context':result=getContext(ws);break;
       case 'language-set':{if(!language)throw new Error('--language en|id is required.');const s=ws.settings();s.language=language;ws.store.put('settings',s);refreshContext(ws);result={language};break;}
-      case 'client-stop':result=await stopClient(ws);break;
-      case 'client-launch':result=await launchClient(ws,client??ws.settings().client);break;
       case 'source-import':result=await importSource(ws,resolve(required(args.values.file,'--file')));break;
       case 'profile-propose':result=proposeProfile(ws,jsonInput(args.values.input));break;
       case 'vacancy-add':result=await captureVacancy(ws,jsonInput(args.values.input));break;
@@ -87,7 +84,7 @@ async function main():Promise<void> {
       case 'application-list':result=listApplications(ws);break;
       case 'application-history':result=applicationHistory(ws,args.values.id);break;
       case 'backup-export':result=await exportBackup(ws,resolve(required(args.values.out,'--out')));break;
-      default:throw new Error(`Unknown operation: ${op}. Run jose help.`);
+      default:throw new Error(`Unknown operation: ${op}. Run the local CLI with --help for the command list.`);
     }
     process.stdout.write(JSON.stringify({ok:true,operation:op,result},null,2)+'\n');
   }finally{ws.close();}

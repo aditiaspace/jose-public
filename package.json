@@ -1,6 +1,6 @@
 {
   "name": "jose-workspace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A private, local, agent-agnostic job-search workspace",
   "type": "module",
@@ -14,7 +14,7 @@
     "dist",
     "instructions",
     "prompts",
-    "clients",
+    "skills",
     "examples",
     "templates",
     "README.md",
@@ -22,10 +22,11 @@
     "SETUP.md",
     "SETUP.id.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "INSTALL.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "smoke:local": "node scripts/smoke-local.mjs",
     "audit:release": "node scripts/audit-release.mjs",

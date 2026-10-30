@@ -8,7 +8,7 @@ import { bindingFor, requestApproval, authorize, ApprovalNeeded, decideApproval,
 import { hash, stable } from '../dist/util.js';
 
 function setup(t) {
-  const parent=mkdtempSync(join(tmpdir(),'jose-approval-'));const ws=initWorkspace(join(parent,'private'),'en','opencode');
+  const parent=mkdtempSync(join(tmpdir(),'jose-approval-'));const ws=initWorkspace(join(parent,'private'),'en');
   t.after(()=>{ws.close();rmSync(parent,{recursive:true,force:true});});
   const profile={id:'profile-one',name:'Sample Person',facts:[{id:'fact-one',category:'project',statement:'Built a prototype',sourceId:'source-one',excerpt:'Built a prototype',confirmed:false}],preferences:{},openQuestions:[],createdAt:'2026-01-01T00:00:00.000Z'};
   ws.store.create('profiles',profile);
