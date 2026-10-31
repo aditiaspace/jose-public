@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { chromium, type BrowserContext, type Locator, type Page } from 'playwright';
 import { PDFParse } from 'pdf-parse';
@@ -9,6 +9,7 @@ import { captureVacancy } from './materials.js';
 import { reportApplication } from './recording.js';
 import type { Workspace } from './workspace.js';
 import { hash, id, now, stable } from './util.js';
+import { findChromiumRuntime } from './browser-runtime.js';
 
 const DEFAULT_BASE = 'https://id.jobstreet.com';
 const ANSWERS = z.record(z.string().min(1), z.string().trim().min(1).max(2000));
@@ -117,20 +118,14 @@ export class JobstreetSession {
     if (!this.context) {
       const profileDir = this.ws.path('browser/jobstreet-profile');
       mkdirSync(profileDir, { recursive: true, mode: 0o700 });
-      const bundledExists = existsSync(chromium.executablePath());
-      const systemCandidates = process.platform === 'win32'
-        ? [join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'), join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'), join(process.env.LOCALAPPDATA ?? '', 'Google', 'Chrome', 'Application', 'chrome.exe')]
-        : process.platform === 'darwin'
-          ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge']
-          : ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/microsoft-edge'];
-      const system = systemCandidates.find(candidate => existsSync(candidate));
-      if (!bundledExists && !system) throw new Error('No Chromium executable is available. Install Playwright Chromium or a system Chrome/Edge browser.');
+      const { bundledPath, systemPath } = findChromiumRuntime();
+      if (!bundledPath && !systemPath) throw new Error('No Chromium executable is available. Install Playwright Chromium or a system Chrome/Edge browser.');
       const launch = (executablePath?: string): Promise<BrowserContext> => chromium.launchPersistentContext(profileDir, { headless: this.headless, acceptDownloads: false, viewport: { width: 1365, height: 900 }, ...(executablePath ? { executablePath } : {}) });
       let context: BrowserContext;
-      try { context = await launch(bundledExists ? undefined : system); }
+      try { context = await launch(bundledPath ? undefined : systemPath); }
       catch (error) {
-        if (!bundledExists || !system) throw new Error('The available Chromium executable could not be launched.', { cause: error });
-        try { context = await launch(system); }
+        if (!bundledPath || !systemPath) throw new Error('The available Chromium executable could not be launched.', { cause: error });
+        try { context = await launch(systemPath); }
         catch (fallbackError) { throw new Error('Playwright Chromium and the available system browser could not be launched.', { cause: fallbackError }); }
       }
       this.context = context;

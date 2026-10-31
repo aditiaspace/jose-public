@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+## 0.3.0 — 2026-10-31
+
+- Replace the localhost approval page with explicit chat decisions persisted by Jose's revision-bound approval CLI; only individually selected facts are confirmed.
+- Add saved editing-mode and resume-format preferences, first-use Harvard FAS-inspired bullet/paragraph previews, self-edit DOCX output, edited-DOCX claim checks, and fresh approvals for revised material.
+- Help users resolve missing Node.js/npm or Chromium during installation, verify doctor/context readiness, and offer Playwright Chromium only with explicit permission.
+- Preserve self-edited DOCX files and saved workflow preferences through backup/restore; export relative material paths inside the active private workspace and omit the internal HTML draft from self-edit exports.
+
 ## 0.2.0 — 2026-10-30
 
 - Replace the OpenCode/DeepSeek-Harness-specific launcher with a local, harness-agnostic Jose skill and CLI install in the user's current private folder; reuse the active harness's LLM and credentials without reading or changing them.

@@ -61,6 +61,9 @@ test('Jose installs in the active private folder without choosing a client or st
   assert.equal(JSON.stringify(doctor).includes(marker),false);
   assert.equal(doctor.result.hostCredentialsInspected,false);
   assert.equal(doctor.result.workspaceInstructionsReady,true);
+  assert.equal(typeof doctor.result.browserReady,'boolean');
+  assert.equal(doctor.result.ok,doctor.result.browserReady);
+  assert.equal(doctor.result.browserReady,doctor.result.browserSource!==null);
   assert.equal(containsBytes(workspace,marker),false);
   assert.equal(readFileSync(join(workspace,'.jose-workspace'),'utf8'),'1\n');
 });

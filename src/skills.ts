@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { INSTALL_ROOT, type Workspace } from './workspace.js';
+import { checkChromiumRuntime } from './browser-runtime.js';
 
 const AGENTS_START='<!-- JOSE:BEGIN -->';
 const AGENTS_END='<!-- JOSE:END -->';
@@ -43,15 +44,15 @@ function agentsBlock():string {
   return `${AGENTS_START}
 ## Jose private workspace
 
-Use the Jose skill in \`.agents/skills/jose/SKILL.md\` for job-search work; Claude Code also has the equivalent under \`.claude/skills/jose/SKILL.md\`. Read \`instructions/jose.md\` before acting. At the beginning of every session, read \`context/current.json\` if it exists and run \`node .jose/node_modules/jose-workspace/dist/cli.js context --workspace .\` from this workspace root.
+Use the Jose skill in \`.agents/skills/jose/SKILL.md\` for job-search work; Claude Code also has the equivalent under \`.claude/skills/jose/SKILL.md\`. Read \`instructions/jose.md\` before acting. Use the current harness's active workspace directory, verify it matches the folder the user opened, and never substitute Home or Documents. At the beginning of every session, read \`context/current.json\` if it exists and run \`node .jose/node_modules/jose-workspace/dist/cli.js context --workspace .\` from this workspace root.
 
-Use the active harness's existing LLM and credentials. Never request, inspect, copy, or change host credentials or global client settings. Use only the Jose CLI for workspace state. Before personal text is sent to a hosted model, explain the provider data handling and obtain consent. Keep CV/resume artifacts in English, use only confirmed source-backed facts, and follow Jose's exact review/disclosure/submit gates.
+Use the active harness's existing LLM and credentials. Never request, inspect, copy, or change host credentials or global client settings. Use only the Jose CLI for workspace state. Before personal text is sent to a hosted model, explain provider data handling and obtain consent. Be friendly and brief. Keep CV/resume artifacts in English, use only confirmed source-backed facts, and handle every explicit approval in chat with \`approval-decide\`; reread the saved context/status before reporting success. Disclosure and final submission remain separate target-bound approvals.
 ${AGENTS_END}`;
 }
 
 function claudeBlock():string {
   return `${CLAUDE_START}
-For Jose job-search work in this folder, invoke the \`jose\` skill and follow \`instructions/jose.md\`. Use the active Claude Code model and its existing credentials; never ask for or change credentials. Keep Jose data in this folder and require the local review page for facts, materials, disclosure, and final submission.
+For Jose job-search work in this folder, invoke the \`jose\` skill and follow \`instructions/jose.md\`. Use the active Claude Code model and its existing credentials; never ask for or change credentials. Keep Jose data in this folder and handle profile, materials, disclosure, and final-submit approval in chat, persisting decisions with Jose's CLI.
 ${CLAUDE_END}`;
 }
 
@@ -86,18 +87,21 @@ export function configureWorkspace(ws:Workspace):void {
   replaceManagedBlock(ws,'.gitignore',GITIGNORE_START,GITIGNORE_END,ignoreBlock());
 }
 
-export function workspaceDoctor(ws:Workspace):Record<string,unknown> {
-  const node=process.versions.node;
-  const nodeVersion=/^(\d+)\.(\d+)\.(\d+)/.exec(node);
+export async function workspaceDoctor(ws:Workspace):Promise<Record<string,unknown>> {
+  const node=process.version;
+  const nodeVersion=/^v?(\d+)\.(\d+)\.(\d+)/.exec(node);
   const nodeCompatible=!!nodeVersion&&Number(nodeVersion[1])===24&&Number(nodeVersion[2])>=15;
   const requiredFiles=['instructions/jose.md','prompts/setup.en.md','prompts/setup.id.md','guides/SETUP.md','guides/SETUP.id.md','.agents/skills/jose/SKILL.md','.claude/skills/jose/SKILL.md'];
   const missingFiles=requiredFiles.filter(relative=>!existsSync(ws.path(relative)));
   const hasAgents=existsSync(ws.path('AGENTS.md'))&&readFileSync(ws.path('AGENTS.md'),'utf8').includes(AGENTS_START)&&readFileSync(ws.path('AGENTS.md'),'utf8').includes(AGENTS_END);
   const hasClaude=existsSync(ws.path('CLAUDE.md'))&&readFileSync(ws.path('CLAUDE.md'),'utf8').includes(CLAUDE_START)&&readFileSync(ws.path('CLAUDE.md'),'utf8').includes(CLAUDE_END);
   const hasIgnore=existsSync(ws.path('.gitignore'))&&readFileSync(ws.path('.gitignore'),'utf8').includes(GITIGNORE_START)&&readFileSync(ws.path('.gitignore'),'utf8').includes(GITIGNORE_END);
+  const browser=await checkChromiumRuntime();
+  const workspaceInstructionsReady=!missingFiles.length&&hasAgents&&hasClaude&&hasIgnore;
   const issues:string[]=[];
   if(!nodeCompatible)issues.push(`Node.js 24.15 or newer in the 24.x line is required; this CLI is running on ${node}.`);
+  if(!browser.ready)issues.push(`Chromium is not ready: ${browser.issue??'the browser could not be launched.'}`);
   if(missingFiles.length)issues.push(`Jose workspace support files are missing: ${missingFiles.join(', ')}. Run node .jose/node_modules/jose-workspace/dist/cli.js init --workspace . --language ${ws.settings().language} from the workspace root after resolving any file conflicts.`);
   if(!hasAgents||!hasClaude||!hasIgnore)issues.push(`Jose workspace instructions or private-file ignore rules are incomplete. Run node .jose/node_modules/jose-workspace/dist/cli.js init --workspace . --language ${ws.settings().language} from the workspace root after resolving any file conflicts.`);
-  return {ok:issues.length===0,node,language:ws.settings().language,onboarding:ws.settings().onboarding,workspaceInstructionsReady:issues.length===0,hostCredentialsInspected:false,legacyClientConfigPresent:existsSync(ws.path('client-config')),issues};
+  return {ok:issues.length===0,node,language:ws.settings().language,onboarding:ws.settings().onboarding,workspaceInstructionsReady,browserReady:browser.ready,browserSource:browser.source,browserIssue:browser.issue??null,hostCredentialsInspected:false,legacyClientConfigPresent:existsSync(ws.path('client-config')),issues};
 }

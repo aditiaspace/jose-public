@@ -25,7 +25,7 @@ test('content approval is bound to a confirmed profile and exact artifact bytes'
   const {ws,profile}=setup(t);
   const profileRequest=requestApproval(ws,'profile',profile.id,bindingFor(ws,'profile',profile.id),{name:profile.name});
   assert.throws(()=>authorize(ws,'profile',profile.id,profileRequest.binding,{}),ApprovalNeeded);
-  decideApproval(ws,profileRequest.id,true);
+  decideApproval(ws,profileRequest.id,true,profile.facts.map(fact=>fact.id));
   const m=material(ws);const binding=bindingFor(ws,'content',m.id);
   assert.throws(()=>authorize(ws,'content',m.id,binding,{},false,m.attemptId),ApprovalNeeded);
   const pending=ws.store.list('approvals').find(a=>a.action==='content');decideApproval(ws,pending.id,true);
@@ -39,7 +39,7 @@ test('rejection and stale profile proposal cannot produce an approval',t=>{
   const request=requestApproval(ws,'profile',profile.id,binding,{});decideApproval(ws,request.id,false);
   assert.throws(()=>authorize(ws,'profile',profile.id,binding,{}),ApprovalNeeded);
   const pending=ws.store.list('approvals').find(a=>a.state==='pending');profile.name='Changed Person';ws.store.put('profiles',profile);
-  assert.throws(()=>decideApproval(ws,pending.id,true),/changed/i);
+  assert.throws(()=>decideApproval(ws,pending.id,true,['fact-one']),/changed/i);
   assert.equal(ws.settings().onboarding,'not_started');
 });
 
@@ -52,7 +52,7 @@ test('submit permission cannot be replayed or reused for another target',t=>{
 });
 
 test('a send approval and submitting state are consumed atomically',t=>{
-  const {ws,profile}=setup(t);const profileRequest=requestApproval(ws,'profile',profile.id,bindingFor(ws,'profile',profile.id),{});decideApproval(ws,profileRequest.id,true);
+  const {ws,profile}=setup(t);const profileRequest=requestApproval(ws,'profile',profile.id,bindingFor(ws,'profile',profile.id),{});decideApproval(ws,profileRequest.id,true,profile.facts.map(fact=>fact.id));
   const m=material(ws);const content=requestApproval(ws,'content',m.id,bindingFor(ws,'content',m.id),{},m.attemptId);decideApproval(ws,content.id,true);
   const send=requestApproval(ws,'submit',m.id,'exact-form',{},m.attemptId);decideApproval(ws,send.id,true);
   consumeSubmission(ws,m.id,'exact-form',{},m.attemptId);
@@ -66,6 +66,7 @@ test('profile review confirms only individually selected facts',t=>{
   profile.facts.push({id:'fact-two',category:'employment',statement:'Held an additional role',sourceId:'source-two',excerpt:'Held an additional role',confirmed:false});
   ws.store.put('profiles',profile);
   const request=requestApproval(ws,'profile',profile.id,bindingFor(ws,'profile',profile.id),{});
+  assert.throws(()=>decideApproval(ws,request.id,true),/explicit|select/i);
   decideApproval(ws,request.id,true,['fact-one']);
   const saved=ws.store.require('profiles',profile.id);
   assert.equal(saved.facts.find(fact=>fact.id==='fact-one').confirmed,true);

@@ -14,16 +14,17 @@
     section { margin: 1rem 0 0; break-inside: avoid-page; }
     h2 { border-bottom: 1px solid #cbd2d9; font-size: 11pt; letter-spacing: 0.06em; margin: 0 0 0.4rem; padding-bottom: 0.15rem; text-transform: uppercase; }
     .claim { margin: 0.25rem 0; orphans: 2; widows: 2; }
+    .resume-bullets { margin: 0.25rem 0; padding-left: 1.15rem; }
+    .docx-content > p:first-child { font-size: 23pt; line-height: 1.15; font-weight: 700; margin: 0; }
+    .docx-content > p:nth-child(2) { border-bottom: 1px solid #9aa5b1; color: #52606d; font-size: 12pt; margin: 0.3rem 0 1.1rem; padding-bottom: 0.65rem; }
+    .docx-content h1, .docx-content h2 { border-bottom: 1px solid #cbd2d9; font-size: 11pt; letter-spacing: 0.06em; margin: 1rem 0 0.4rem; padding-bottom: 0.15rem; text-transform: uppercase; }
+    .docx-content p { margin: 0.25rem 0; orphans: 2; widows: 2; }
+    .docx-content ul, .docx-content ol { margin: 0.25rem 0; padding-left: 1.15rem; }
+    .docx-content img { display: none; }
     @media print { body { max-width: none; } }
   </style>
 </head>
 <body>
-  <header>
-    <h1>{{NAME}}</h1>
-    <p class="headline">{{TITLE}}</p>
-  </header>
-  <main>
-    {{SECTIONS}}
-  </main>
+  {{CONTENT}}
 </body>
 </html>

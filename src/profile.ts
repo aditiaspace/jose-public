@@ -108,7 +108,7 @@ export function getContext(ws: Workspace): Record<string, unknown> {
 
   return {
     schemaVersion: 1,
-    workspace: { language: settings.language, onboarding: settings.onboarding },
+    workspace: { language: settings.language, onboarding: settings.onboarding, workflowPreferences: { editingMode: settings.editingMode ?? null, resumeFormat: settings.resumeFormat ?? null } },
     profileId: current?.confirmedAt ? current.id : null,
     identity: current?.confirmedAt ? { name: current.name } : null,
     facts,
@@ -120,7 +120,7 @@ export function getContext(ws: Workspace): Record<string, unknown> {
       'Fact references and quotes provide traceability, not proof that a claim is semantically true; the user must review every claim.',
       'Do not invent dates, metrics, employers, degrees, skills, salary, or declarations. Keep missing details in open questions.',
       'CVs and resumes must always be in English. Cover letters default to English unless the user asks for another language. The local CV language screen is only a limited check, not natural-language detection.',
-      'Never mark profile or content approved. Human review happens in Jose local review.',
+      'Never mark profile or content approved. Human review happens in the harness chat and must be persisted as an exact, revision-bound Jose CLI approval.',
     ],
   };
 }

@@ -9,7 +9,20 @@ export class ApprovalNeeded extends Error {
   constructor(request:Approval) { super('A human decision is required before this action.');this.name='ApprovalNeeded';this.request=request; }
 }
 
-/** Immutable manifest covers the actual PDF, HTML, letter and evidence; never just a filename. */
+export function materialManifestHash(material:Pick<Material,'id'|'attemptId'|'vacancyId'|'profileId'|'language'|'files'|'fileHashes'|'editingMode'|'resumeFormat'>):string {
+  return hash(stable({
+    materialId:material.id,
+    attemptId:material.attemptId,
+    vacancyId:material.vacancyId,
+    profileId:material.profileId,
+    language:material.language,
+    files:material.files,
+    fileHashes:material.fileHashes,
+    ...(material.editingMode?{editingMode:material.editingMode}:{}),
+    ...(material.resumeFormat?{resumeFormat:material.resumeFormat}:{}),
+  }));
+}
+/** Immutable manifest covers the actual HTML, PDF, DOCX when present, letter, and evidence; never just a filename. */
 export function verifyMaterial(ws:Workspace,materialId:string):Material {
   const material=ws.store.require<Material>('materials',materialId);
   if(material.language!=='en') throw new Error('CV/resume language must be English.');
@@ -20,12 +33,12 @@ export function verifyMaterial(ws:Workspace,materialId:string):Material {
   const attempt=ws.store.require<Attempt>('attempts',material.attemptId);
   if(attempt.vacancyId!==material.vacancyId || (attempt.materialId && attempt.materialId!==material.id)) throw new Error('The current application revision has changed.');
   const entries=Object.values(material.files);
-  if(entries.length!==4 || new Set(entries).size!==4 || entries.some(p=>typeof p!=='string')) throw new Error('Invalid document manifest.');
+  if(entries.length!==4+(material.files.docx?1:0) || new Set(entries).size!==entries.length || entries.some(path=>typeof path!=='string')) throw new Error('Invalid document manifest.');
   if(Object.keys(material.fileHashes).length!==entries.length) throw new Error('Invalid document hashes.');
   for(const path of entries) {
     if(!Object.hasOwn(material.fileHashes,path) || hash(ws.read(path))!==material.fileHashes[path]) throw new Error(`Document changed after drafting: ${path}`);
   }
-  const manifest=hash(stable({materialId:material.id,attemptId:material.attemptId,vacancyId:material.vacancyId,profileId:material.profileId,language:material.language,files:material.files,fileHashes:material.fileHashes}));
+  const manifest=materialManifestHash(material);
   if(manifest!==material.manifestHash) throw new Error('The document manifest has changed.');
   return material;
 }
@@ -88,7 +101,7 @@ export function consumeSubmission(ws:Workspace,materialId:string,binding:string,
   });
 }
 
-/** Only the loopback review UI invokes this; no CLI/API route exposes an approval flag. */
+/** Persist the user's explicit chat decision against the current revision. */
 export function decideApproval(ws:Workspace,approvalId:string,accepted:boolean,selectedFactIds?:string[]):Approval {
   return ws.store.tx(()=>{
     const a=ws.store.require<Approval>('approvals',approvalId);
@@ -96,10 +109,13 @@ export function decideApproval(ws:Workspace,approvalId:string,accepted:boolean,s
     if(a.action==='profile'||a.action==='content') {
       if(bindingFor(ws,a.action,a.entityId)!==a.binding) throw new Error('The data changed. Open a fresh review.');
     }
+    if(!accepted&&selectedFactIds!==undefined) throw new Error('Fact IDs may only accompany an approval decision.');
+    if(a.action==='profile'&&accepted&&selectedFactIds===undefined) throw new Error('Select one or more explicit career facts before approval.');
+    if(a.action!=='profile'&&selectedFactIds!==undefined) throw new Error('Fact IDs may only be selected for profile approval.');
     if(accepted && a.action==='profile') {
       const profile=ws.store.require<Profile>('profiles',a.entityId);
-      const selected=selectedFactIds===undefined?new Set(profile.facts.map(fact=>fact.id)):new Set(selectedFactIds);
-      if(selectedFactIds!==undefined&&selected.size!==selectedFactIds.length) throw new Error('Fact selection contains duplicates.');
+      const selectedIds=selectedFactIds??[];const selected=new Set(selectedIds);
+      if(selected.size!==selectedIds.length) throw new Error('Fact selection contains duplicates.');
       if(selected.size===0) throw new Error('Confirm at least one supported career fact or reject the proposal.');
       if([...selected].some(factId=>!profile.facts.some(fact=>fact.id===factId))) throw new Error('Fact selection does not match this profile proposal.');
       profile.facts=profile.facts.map(fact=>({...fact,confirmed:selected.has(fact.id)}));profile.confirmedAt=now();

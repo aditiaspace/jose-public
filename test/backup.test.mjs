@@ -24,7 +24,7 @@ function setup() {
   return { root, ws };
 }
 
-function addRecords(ws) {
+function addRecords(ws, selfEdit=false) {
   const sourcePath = 'sources/fictional-source.txt';
   const sourceBytes = Buffer.from('A neutral fictional resume source.');
   ws.write(sourcePath, sourceBytes);
@@ -40,12 +40,14 @@ function addRecords(ws) {
     pdf: `applications/${attemptId}/${materialId}/resume.pdf`,
     letter: `applications/${attemptId}/${materialId}/cover-letter.txt`,
     evidence: `applications/${attemptId}/${materialId}/evidence.json`,
+    ...(selfEdit ? { docx: `applications/${attemptId}/${materialId}/resume.docx` } : {}),
   };
   const contents = {
     html: '<p>Fictional application</p>',
     pdf: 'fictional PDF bytes',
     letter: 'A fictional cover letter.',
     evidence: '{"claims":[]}',
+    ...(selfEdit ? { docx: 'fictional editable DOCX bytes' } : {}),
   };
   const fileHashes = {};
   for (const key of Object.keys(files)) {
@@ -53,13 +55,14 @@ function addRecords(ws) {
     ws.write(files[key], bytes);
     fileHashes[files[key]] = hash(bytes);
   }
+  const materialPreferences=selfEdit?{editingMode:'self_edit',resumeFormat:'bullet'}:{};
   const manifestHash = hash(stable({
     materialId, attemptId, vacancyId: 'vacancy-fictional', profileId: 'profile-fictional',
-    language: 'en', files, fileHashes,
+    language: 'en', files, fileHashes, ...materialPreferences,
   }));
   ws.store.create('materials', {
     id: materialId, attemptId, vacancyId: 'vacancy-fictional', profileId: 'profile-fictional',
-    language: 'en', createdAt: '2026-01-02T03:04:05.000Z', files, fileHashes,
+    language: 'en', createdAt: '2026-01-02T03:04:05.000Z', files, fileHashes, ...materialPreferences,
     manifestHash, title: 'Fictional application',
   });
   ws.store.create('attempts', {
@@ -124,6 +127,23 @@ test('restore preserves workspace identity, records, and every artifact hash in 
   assert.equal(existsSync(join(restoredRoot, 'browser')), false);
   assert.equal(existsSync(join(restoredRoot, 'client-config')), false);
   assert.equal(existsSync(join(restoredRoot, '.jose-runtime')), false);
+});
+
+test('backup round-trips self-edit DOCX and its material preferences', async () => {
+  const { root, ws } = setup();
+  const records = addRecords(ws, true);
+  const backupPath = join(root, 'self-edit-backup.jose.gz');
+  const restoreParent = join(root, 'self-edit-restores');
+  const restoredRoot = join(restoreParent, 'restored-workspace');
+  mkdirSync(restoreParent);
+  await exportBackup(ws, backupPath);
+
+  const restored = await restoreBackup(backupPath, restoredRoot);
+  cleanups.push(() => restored.close());
+  const restoredMaterial = restored.store.require('materials', records.materialId);
+  assert.equal(restoredMaterial.editingMode, 'self_edit');
+  assert.equal(restoredMaterial.resumeFormat, 'bullet');
+  assert.equal(hash(restored.read(records.files.docx)), hash(Buffer.from(records.contents.docx)));
 });
 
 test('restore revokes transient portal permissions and marks an interrupted submission uncertain', async () => {

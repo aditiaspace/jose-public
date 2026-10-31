@@ -1,16 +1,19 @@
 import { closeSync, existsSync, linkSync, lstatSync, mkdirSync, openSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { lookup as lookupDns } from 'node:dns/promises';
 import { request as httpsRequest, Agent } from 'node:https';
 import { isIP } from 'node:net';
+import { Document, HeadingLevel, Packer, Paragraph, TextRun, convertInchesToTwip, convertMillimetersToTwip } from 'docx';
 import { PDFDocument } from 'pdf-lib';
 import { chromium, type Browser } from 'playwright';
+import mammoth from 'mammoth';
 import { z } from 'zod';
 import type { Attempt, Fact, Material, Profile, Source, Vacancy } from './contracts.js';
-import { authorize, bindingFor, requestApproval, verifyMaterial } from './approval.js';
+import { authorize, bindingFor, materialManifestHash, requestApproval, verifyMaterial } from './approval.js';
 import { extractPdfText } from './documents.js';
 import { INSTALL_ROOT, type Workspace } from './workspace.js';
+import { findChromiumRuntime } from './browser-runtime.js';
 import { assertPrivateRoot, escapeHtml, hash, id, inside, now, stable } from './util.js';
 
 const VACANCY_INPUT = z.object({
@@ -42,6 +45,9 @@ const MATERIAL_INPUT = z.object({
   vacancyId: z.string().trim().min(1).max(100),
   attemptId: z.string().trim().min(1).max(100).optional(),
   language: z.literal('en'),
+  resumeFormat: z.enum(['bullet','paragraph']).optional(),
+  editedDocxFile: z.string().trim().min(1).max(4096).optional(),
+  editedDocxHash: z.string().trim().min(1).max(128).optional(),
   title: z.string().trim().min(1).max(160),
   claims: z.array(CLAIM_INPUT).min(1).max(200),
   letter: z.object({
@@ -53,7 +59,9 @@ const MATERIAL_INPUT = z.object({
     }).strict()).min(1).max(40),
     closing: z.string().trim().min(1).max(300).optional(),
   }).strict(),
-}).strict();
+}).strict().superRefine((value,ctx)=>{
+  if((value.editedDocxFile===undefined)!==(value.editedDocxHash===undefined))ctx.addIssue({code:'custom',path:['editedDocxHash'],message:'editedDocxFile and editedDocxHash must be provided together.'});
+});
 const EXPORT_INPUT = z.object({
   materialId: z.string().trim().min(1).max(100),
   outDir: z.string().trim().min(1).max(4096).refine(path => !path.includes('\0'), 'Export path contains an invalid character.'),
@@ -344,30 +352,55 @@ function flaggedBahasaTerms(values: string[]): string[] {
 function normalizedPdfText(value: string): string {
   return value.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
 }
-
-function systemChromiumPath(): string | undefined {
-  const candidates = process.platform === 'win32'
-    ? [
-        join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
-        join(process.env.LOCALAPPDATA ?? '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-      ]
-    : process.platform === 'darwin'
-      ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge']
-      : ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/microsoft-edge'];
-  return candidates.find(candidate => existsSync(candidate));
+async function generateResumeDocx(name:string,title:string,claims:PreparedClaim[],resumeFormat:'bullet'|'paragraph'):Promise<Buffer> {
+  const children:Paragraph[]=[
+    new Paragraph({children:[new TextRun({text:name,font:'Arial',size:32,bold:true})],spacing:{after:100}}),
+    new Paragraph({children:[new TextRun({text:title,font:'Arial',size:22})],spacing:{after:180}}),
+  ];
+  const sections=new Map<string,string[]>();
+  for(const claim of claims){const group=sections.get(claim.section)??[];group.push(claim.text);sections.set(claim.section,group);}
+  for(const [section,items] of sections) {
+    children.push(new Paragraph({children:[new TextRun({text:section.toUpperCase(),font:'Arial',size:22,bold:true})],heading:HeadingLevel.HEADING_1,spacing:{before:160,after:80}}));
+    for(const item of items) {
+      const text=new TextRun({text:item,font:'Arial',size:20});
+      children.push(resumeFormat==='bullet'
+        ?new Paragraph({children:[text],bullet:{level:0},spacing:{after:80}})
+        :new Paragraph({children:[text],spacing:{after:100}}));
+    }
+  }
+  const document=new Document({creator:'Jose local workspace',title,sections:[{
+    properties:{page:{size:{width:convertMillimetersToTwip(210),height:convertMillimetersToTwip(297)},margin:{top:convertInchesToTwip(0.75),right:convertInchesToTwip(0.75),bottom:convertInchesToTwip(0.75),left:convertInchesToTwip(0.75)}}},
+    children,
+  }]});
+  return Buffer.from(await Packer.toBuffer(document));
 }
 
+const EDITED_DOCX_PDF_NOTE='The DOCX file is preserved exactly; the generated PDF uses an ATS-conscious rendering of its text and structure, so custom Word styling and embedded images may not carry over.';
+type EditedDocxContent={text:string;html:string;warnings:string[]};
+async function readEditedDocx(bytes:Buffer):Promise<EditedDocxContent> {
+  const convertImage=mammoth.images.imgElement(async()=>({src:'data:,'}));
+  const [raw,converted]=await Promise.all([
+    mammoth.extractRawText({buffer:bytes}),
+    mammoth.convertToHtml({buffer:bytes},{includeEmbeddedStyleMap:false,externalFileAccess:false,convertImage}),
+  ]);
+  const errors=[...raw.messages,...converted.messages].filter(message=>message.type==='error');
+  if(errors.length)throw new Error(`Edited DOCX could not be read: ${errors.map(message=>message.message).join('; ')}`);
+  const text=raw.value.trim();
+  if(!text||text.length>1_000_000)throw new Error('Edited DOCX must contain readable text under 1,000,000 characters.');
+  return {text,html:converted.value,warnings:converted.messages.filter(message=>message.type==='warning').map(message=>message.message)};
+}
+
+
 async function launchChromium(): Promise<Browser> {
-  const bundledExists = existsSync(chromium.executablePath());
-  const system = systemChromiumPath();
-  if (!bundledExists && !system) throw new Error('No Chromium executable is available. Install Playwright Chromium or a system Chrome/Edge browser.');
+  const { bundledPath, systemPath } = findChromiumRuntime();
+  if (!bundledPath && !systemPath) throw new Error('No Chromium executable is available. Install Playwright Chromium or a system Chrome/Edge browser.');
+  const launch = (executablePath?: string): Promise<Browser> => chromium.launch(executablePath ? { executablePath } : {});
   try {
-    return await chromium.launch(bundledExists ? {} : { executablePath: system });
+    return await launch(bundledPath ? undefined : systemPath);
   } catch (error) {
-    if (bundledExists && system) {
+    if (bundledPath && systemPath) {
       try {
-        return await chromium.launch({ executablePath: system });
+        return await launch(systemPath);
       } catch (fallbackError) {
         throw new Error('Playwright Chromium and the available system browser could not be launched.', { cause: fallbackError });
       }
@@ -402,11 +435,18 @@ function ensureEvidenceRevision(ws: Workspace, material: Material): void {
 
 export async function createMaterial(ws: Workspace, input: unknown): Promise<Material> {
   const parsed = MATERIAL_INPUT.parse(input);
+  const settings=ws.settings();
   const profile = currentProfile(ws);
   const vacancy = ws.store.require<Vacancy>('vacancies', parsed.vacancyId);
   const initialAttempt = parsed.attemptId ? ws.store.require<Attempt>('attempts', parsed.attemptId) : null;
   if (initialAttempt && initialAttempt.vacancyId !== vacancy.id) throw new Error('The selected attempt belongs to a different vacancy.');
   if (initialAttempt && isSubmitted(initialAttempt)) throw new Error('This application has already been reported or submitted. Create a new attempt instead of revising its materials.');
+  const previousMaterial=initialAttempt?.materialId?ws.store.require<Material>('materials',initialAttempt.materialId):null;
+  const editingMode=parsed.editedDocxFile?'self_edit':settings.editingMode;
+  const resumeFormat=parsed.resumeFormat??(parsed.editedDocxFile?previousMaterial?.resumeFormat:undefined)??settings.resumeFormat;
+  if(!editingMode)throw new Error('Ask the user whether they want to edit a DOCX or have Jose revise in chat, then save editingMode with workflow-preferences.');
+  if(!resumeFormat)throw new Error('Show the user bullet-point and paragraph examples made from the same confirmed fact, then save resumeFormat with workflow-preferences.');
+  if(parsed.editedDocxFile&&(!previousMaterial||previousMaterial.editingMode!=='self_edit'||!previousMaterial.files.docx))throw new Error('An edited DOCX can only revise the current self-edit material on an unsubmitted attempt.');
 
   const factMap = new Map(profile.facts.map(fact => [fact.id, fact]));
   const sourceHashes = new Map<string, string>();
@@ -426,6 +466,20 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
   const letterFlaggedTerms=letterLanguage==='en'?flaggedBahasaTerms(letterTextForScreen):[];
   const flaggedTerms=[...new Set([...cvFlaggedTerms,...letterFlaggedTerms])].sort();
 
+  let docxBytes:Buffer|undefined;
+  let editedDocx:EditedDocxContent|undefined;
+  if(parsed.editedDocxFile) {
+    if(!parsed.editedDocxHash)throw new Error('Inspect the edited DOCX first and pass its editedDocxHash.');
+    docxBytes=ws.read(parsed.editedDocxFile);
+    if(docxBytes.length===0||docxBytes.length>20*1024*1024)throw new Error('Edited DOCX must contain 1 byte to 20 MB.');
+    if(hash(docxBytes)!==parsed.editedDocxHash)throw new Error('Edited DOCX changed after inspection. Inspect it again before creating a new material revision.');
+    editedDocx=await readEditedDocx(docxBytes);
+    const normalizedDocx=normalizedPdfText(editedDocx.text);
+    for(const requiredText of [profile.name,parsed.title,...claims.map(claim=>claim.text)]) {
+      if(!normalizedDocx.includes(normalizedPdfText(requiredText)))throw new Error('The edited DOCX does not contain all source-backed resume claims in the new revision.');
+    }
+  }
+
   const attemptId = initialAttempt?.id ?? id();
   const materialId = id();
   const createdAt = now();
@@ -436,33 +490,33 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
   const sectionGroups = new Map<string, string[]>();
   for (const claim of claims) {
     const group = sectionGroups.get(claim.section) ?? [];
-    group.push(`<p class="claim">${escapeHtml(claim.text)}</p>`);
+    group.push(claim.text);
     sectionGroups.set(claim.section, group);
   }
-  const sectionHtml = [...sectionGroups.entries()].map(([section, entries]) =>
-    `<section><h2>${escapeHtml(section)}</h2>${entries.join('\n')}</section>`,
-  ).join('\n');
-  const replacements: Record<string, () => string> = {
-    '{{NAME}}': () => escapeHtml(profile.name),
-    '{{TITLE}}': () => escapeHtml(parsed.title),
-    '{{SECTIONS}}': () => sectionHtml,
-  };
-  let html = template;
-  for (const [marker, replacement] of Object.entries(replacements)) {
-    if (html.split(marker).length !== 2) throw new Error(`CV template must contain exactly one ${marker} marker.`);
-    html = html.replace(marker, replacement);
-  }
+  const sectionHtml = [...sectionGroups.entries()].map(([section, entries]) => {
+    const claimsHtml=resumeFormat==='bullet'
+      ?`<ul class="resume-bullets">${entries.map(entry=>`<li class="claim">${escapeHtml(entry)}</li>`).join('\n')}</ul>`
+      :entries.map(entry=>`<p class="claim">${escapeHtml(entry)}</p>`).join('\n');
+    return `<section><h2>${escapeHtml(section)}</h2>${claimsHtml}</section>`;
+  }).join('\n');
+  const standardContent=`<header><h1>${escapeHtml(profile.name)}</h1><p class="headline">${escapeHtml(parsed.title)}</p></header><main>${sectionHtml}</main>`;
+  const resumeContent=editedDocx?`<main class="docx-content">${editedDocx.html}</main>`:standardContent;
+  if(template.split('{{CONTENT}}').length!==2)throw new Error('CV template must contain exactly one {{CONTENT}} marker.');
+  const html=template.replace('{{CONTENT}}',resumeContent);
+  if(editingMode==='self_edit'&&!docxBytes)docxBytes=await generateResumeDocx(profile.name,parsed.title,claims,resumeFormat);
 
   const letterText = [parsed.letter.greeting, ...letterParagraphs.map(paragraph => paragraph.text), parsed.letter.closing]
     .filter((part): part is string => Boolean(part))
     .join('\n\n') + '\n';
   const evidence = {
-    schemaVersion: 1,
+    schemaVersion: 3,
     materialId,
     attemptId,
     vacancyId: vacancy.id,
     profileId: profile.id,
     profileHash,
+    editingMode,
+    resumeFormat,
     sourceHashes: sourceHashRecord,
     language: {
       cv: 'en',
@@ -479,21 +533,26 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
       paragraphs: letterParagraphs,
       closing: parsed.letter.closing ?? null,
     },
-    reviewNote: 'Fact IDs and verbatim quotes provide traceability, not semantic proof. The user must review each claim and the exported documents.',
+    ...(editedDocx?{editedDocxText:editedDocx.text,docxConversionWarnings:editedDocx.warnings,pdfRenderingNote:EDITED_DOCX_PDF_NOTE}:{}),
+    reviewNote: 'Fact IDs and verbatim quotes provide traceability, not semantic proof. The user must review every claim in chat before approval.',
   };
   const evidenceBytes = Buffer.from(JSON.stringify(evidence, null, 2) + '\n', 'utf8');
-  const files = {
-    html: `applications/${attemptId}/${materialId}/resume.html`,
-    pdf: `applications/${attemptId}/${materialId}/resume.pdf`,
-    letter: `applications/${attemptId}/${materialId}/cover-letter.txt`,
-    evidence: `applications/${attemptId}/${materialId}/evidence.json`,
+  const files:Material['files']={
+    html:`applications/${attemptId}/${materialId}/resume.html`,
+    pdf:`applications/${attemptId}/${materialId}/resume.pdf`,
+    letter:`applications/${attemptId}/${materialId}/cover-letter.txt`,
+    evidence:`applications/${attemptId}/${materialId}/evidence.json`,
+    ...(docxBytes?{docx:`applications/${attemptId}/${materialId}/resume.docx`}:{}),
   };
+  const reviewFiles=Object.fromEntries(Object.entries(files).filter(([kind])=>editingMode!=='self_edit'||kind!=='html'));
 
   let browser: Browser | undefined;
   let pdfBytes: Uint8Array;
   try {
     browser = await launchChromium();
-    const page = await browser.newPage();
+    const context=await browser.newContext({javaScriptEnabled:false,serviceWorkers:'block'});
+    await context.route('**/*',route=>route.abort());
+    const page = await context.newPage();
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const renderedPdf = await page.pdf({
@@ -518,9 +577,19 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
 
   const extractedPdf = await extractPdfText(pdfBytes);
   const extractedNormalized = normalizedPdfText(extractedPdf);
-  for (const requiredText of [profile.name, parsed.title, ...claims.map(claim => claim.text)]) {
+  const requiredPdfText=editedDocx
+    ?editedDocx.text.split(/\r?\n/u).map(line=>line.trim()).filter(Boolean)
+    :[profile.name,parsed.title,...claims.map(claim=>claim.text)];
+  for (const requiredText of requiredPdfText) {
     if (!extractedNormalized.includes(normalizedPdfText(requiredText))) {
       throw new Error('The generated PDF did not preserve all expected CV text when read back. The material was not saved.');
+    }
+  }
+  if(docxBytes) {
+    const extractedDocx=editedDocx?.text??(await mammoth.extractRawText({buffer:docxBytes})).value;
+    const normalizedDocx=normalizedPdfText(extractedDocx);
+    for(const requiredText of [profile.name,parsed.title,...claims.map(claim=>claim.text)]) {
+      if(!normalizedDocx.includes(normalizedPdfText(requiredText)))throw new Error('The generated DOCX did not preserve all expected CV text. The material was not saved.');
     }
   }
 
@@ -538,6 +607,7 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
     [files.letter]: Buffer.from(letterText, 'utf8'),
     [files.evidence]: evidenceBytes,
   };
+  if(docxBytes&&files.docx)bytesByPath[files.docx]=docxBytes;
   const fileHashes = Object.fromEntries(Object.entries(bytesByPath).map(([path, bytes]) => [path, hash(bytes)]));
   const material: Material = {
     id: materialId,
@@ -546,15 +616,18 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
     profileId: profile.id,
     language: 'en',
     letterLanguage,
+    editingMode,
+    resumeFormat,
     createdAt,
     files,
     fileHashes,
-    manifestHash: hash(stable({ materialId, attemptId, vacancyId: vacancy.id, profileId: profile.id, language: 'en', files, fileHashes })),
+    manifestHash: '',
     title: parsed.title,
     ...(flaggedTerms.length ? {languageTerms:flaggedTerms,languageWarning:`Review whether these terms are part of an official name or need English translation: ${flaggedTerms.join(', ')}.`} : {}),
     profileHash,
     sourceHashes: sourceHashRecord,
   };
+  material.manifestHash=materialManifestHash(material);
 
   const materialDirectory=ws.path(`applications/${attemptId}/${materialId}`);
   mkdirSync(dirname(materialDirectory),{recursive:true,mode:0o700});
@@ -580,8 +653,12 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
         vacancy: { company: vacancy.company, role: vacancy.role, url: vacancy.url ?? null },
         language: 'en',
         languageCheck: 'Declared English; limited common-term screening only, not full language detection.',
+        editingMode,
+        resumeFormat,
+        files:reviewFiles,
         claims,
         letter: evidence.letter,
+        ...(editedDocx?{resumeText:editedDocx.text,docxConversionWarnings:editedDocx.warnings,pdfRenderingNote:EDITED_DOCX_PDF_NOTE}:{}),
         reviewNote: evidence.reviewNote,
       }, attemptId);
     });
@@ -629,7 +706,7 @@ function writeExclusiveAtomic(path: string, data: Uint8Array): void {
 export async function exportMaterial(ws: Workspace, materialId: string, outDir: string): Promise<Record<string, unknown>> {
   const parsed = EXPORT_INPUT.parse({ materialId, outDir });
   const material = verifyMaterial(ws, parsed.materialId);
-  if (!material.approvedAt) throw new Error('This material has not been approved by the user. Open its pending content review first.');
+  if (!material.approvedAt) throw new Error('This material has not been approved in chat. Re-read the draft and request approval before exporting.');
   ensureEvidenceRevision(ws, material);
   const attempt = ws.store.require<Attempt>('attempts', material.attemptId);
   if (attempt.vacancyId !== material.vacancyId || attempt.materialId !== material.id) throw new Error('The selected material is not the current revision for its vacancy and application.');
@@ -645,20 +722,17 @@ export async function exportMaterial(ws: Workspace, materialId: string, outDir: 
   if (inside(INSTALL_ROOT, target)) throw new Error('Material exports cannot be written inside the Jose installation.');
   if (pathExists(target) && !statSync(target).isDirectory()) throw new Error('The selected export path is not a directory.');
 
-  const exportNames = {
-    html: 'resume.html',
-    pdf: 'resume.pdf',
-    letter: 'cover-letter.txt',
-    evidence: 'evidence.json',
-  };
-  const exportItems = (['html', 'pdf', 'letter', 'evidence'] as const).map(kind => {
-    const sourcePath = material.files[kind];
-    const sourceBytes = ws.read(sourcePath);
-    if (hash(sourceBytes) !== material.fileHashes[sourcePath]) throw new Error(`Material file changed after approval: ${sourcePath}.`);
-    const destination = resolve(target, exportNames[kind]);
-    if (!inside(target, destination)) throw new Error('Export file path escapes the selected private output directory.');
-    if (pathExists(destination)) throw new Error(`Refusing to overwrite an existing file: ${destination}`);
-    return { kind, sourceBytes, destination };
+  const exportNames:Record<string,string>={...(material.editingMode==='self_edit'?{}:{html:'resume.html'}),pdf:'resume.pdf',letter:'cover-letter.txt',evidence:'evidence.json',...(material.files.docx?{docx:'resume.docx'}:{})};
+  const exportEntries=Object.entries(material.files).filter(([kind])=>material.editingMode!=='self_edit'||kind!=='html');
+  const exportItems=exportEntries.map(([kind,sourcePath])=>{
+    const fileName=exportNames[kind];
+    if(!fileName)throw new Error(`Unsupported material file: ${kind}`);
+    const sourceBytes=ws.read(sourcePath);
+    if(hash(sourceBytes)!==material.fileHashes[sourcePath])throw new Error(`Material file changed after approval: ${sourcePath}.`);
+    const destination=resolve(target,fileName);
+    if(!inside(target,destination))throw new Error('Export file path escapes the selected private output directory.');
+    if(pathExists(destination))throw new Error(`Refusing to overwrite an existing file: ${destination}`);
+    return {kind,sourceBytes,destination};
   });
   const exported: Record<string, string> = {};
   for (const { kind, sourceBytes, destination } of exportItems) {
@@ -673,5 +747,41 @@ export async function exportMaterial(ws: Workspace, materialId: string, outDir: 
     files: exported,
     fileHashes: material.fileHashes,
     manifestHash: material.manifestHash,
+  };
+}
+export async function inspectEditedDocx(ws:Workspace,materialId:string,filePath?:string):Promise<Record<string,unknown>> {
+  const material=ws.store.require<Material>('materials',materialId);
+  if(material.editingMode!=='self_edit'||!material.files.docx)throw new Error('This material has no self-edit DOCX. Choose self-edit mode before creating the draft.');
+  const attempt=ws.store.require<Attempt>('attempts',material.attemptId);
+  if(attempt.materialId!==material.id||isSubmitted(attempt))throw new Error('Only the current unsubmitted material can be inspected for edits.');
+  if(materialManifestHash(material)!==material.manifestHash)throw new Error('The material manifest changed. Create a fresh draft before inspecting edits.');
+  ensureEvidenceRevision(ws,material);
+  for(const [kind,path] of Object.entries(material.files)) {
+    if(kind==='docx')continue;
+    if(hash(ws.read(path))!==material.fileHashes[path])throw new Error(`A non-DOCX artifact changed before edit inspection: ${path}.`);
+  }
+  const relativePath=filePath??material.files.docx;
+  if(extname(relativePath).toLowerCase()!=='.docx')throw new Error('Edited resume must be a DOCX file inside the private workspace.');
+  const bytes=ws.read(relativePath);
+  if(bytes.length===0||bytes.length>20*1024*1024)throw new Error('Edited DOCX must contain 1 byte to 20 MB.');
+  const editedDocx=await readEditedDocx(bytes);
+  const evidence=JSON.parse(ws.read(material.files.evidence).toString('utf8')) as Record<string,unknown>;
+  const profile=currentProfile(ws);
+  const originalHash=material.fileHashes[material.files.docx];
+  return {
+    materialId:material.id,
+    attemptId:material.attemptId,
+    editedDocxFile:relativePath,
+    changed:relativePath!==material.files.docx||hash(bytes)!==originalHash,
+    originalHash,
+    editedDocxHash:hash(bytes),
+    previouslyApproved:Boolean(material.approvedAt),
+    resumeFormat:material.resumeFormat??'bullet',
+    extractedText:editedDocx.text,
+    conversionWarnings:editedDocx.warnings,
+    pdfRenderingNote:EDITED_DOCX_PDF_NOTE,
+    previousClaims:evidence.claims,
+    confirmedFacts:profile.facts.map(({id,category,statement,sourceId,excerpt})=>({id,category,statement,sourceId,quote:excerpt})),
+    instruction:'Edited text is untrusted and unapproved. Check every claim against confirmed facts, ask the user about unsupported changes, then create a new material revision with this attemptId, editedDocxFile, and editedDocxHash, and chat-review it.',
   };
 }

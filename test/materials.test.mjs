@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import mammoth from 'mammoth';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { decideApproval, verifyMaterial } from '../dist/approval.js';
 import { importSource } from '../dist/documents.js';
@@ -15,6 +16,7 @@ const SAMPLE_CV = `SYNTHETIC EXAMPLE ONLY — not a real person's CV.\n\nExample
 function temporaryWorkspace(t) {
   const root = mkdtempSync(join(tmpdir(), 'jose-public-test-'));
   const ws = initWorkspace(root);
+  const settings=ws.settings();settings.editingMode='chat';settings.resumeFormat='bullet';ws.store.put('settings',settings);
   t.after(() => {
     ws.close();
     rmSync(root, { recursive: true, force: true });
@@ -48,7 +50,7 @@ async function confirmSampleProfile(t) {
   assert.equal(proposed.facts.every(fact => fact.confirmed === false), true);
   const profileApproval = ws.store.list('approvals').find(item => item.action === 'profile' && item.entityId === proposed.id);
   assert.ok(profileApproval);
-  decideApproval(ws, profileApproval.id, true);
+  decideApproval(ws,profileApproval.id,true,proposed.facts.map(fact=>fact.id));
   return { root, ws, source, profile: ws.store.require('profiles', proposed.id) };
 }
 
@@ -125,7 +127,7 @@ test('profile facts stay unconfirmed until local approval and quotes must be ver
   assert.deepEqual(getContext(ws).facts, []);
   const approval = ws.store.list('approvals').find(item => item.action === 'profile' && item.entityId === proposed.id);
   assert.ok(approval);
-  decideApproval(ws, approval.id, true);
+  decideApproval(ws,approval.id,true,[proposed.facts[0].id]);
   assert.equal(ws.settings().profileId, proposed.id);
   assert.equal(ws.store.require('profiles', proposed.id).facts[0].confirmed, true);
   refreshContext(ws);
@@ -191,6 +193,10 @@ test('material output is evidence-bound, immutable across revisions, and exports
   assert.equal(JSON.parse(ws.read(indonesianLetter.files.evidence).toString('utf8')).language.letter, 'id');
 
   const material = await createMaterial(ws, draftInput);
+  assert.equal(material.editingMode,'chat');
+  assert.equal(material.resumeFormat,'bullet');
+  assert.equal(material.files.docx,undefined);
+  assert.match(ws.read(material.files.html).toString('utf8'),/<ul class="resume-bullets">/u);
   assert.deepEqual(Object.keys(material.fileHashes).sort(), Object.values(material.files).sort());
   assert.equal(material.manifestHash.length, 64);
   assert.equal(verifyMaterial(ws, material.id).manifestHash, material.manifestHash);
@@ -253,6 +259,34 @@ test('material output is evidence-bound, immutable across revisions, and exports
   });
   const replacementApproval = ws.store.list('approvals').find(item => item.action === 'profile' && item.entityId === replacementProfile.id);
   assert.ok(replacementApproval);
-  decideApproval(ws, replacementApproval.id, true);
+  decideApproval(ws,replacementApproval.id,true,[replacementProfile.facts[0].id]);
   assert.throws(() => verifyMaterial(ws, revision.id), /career profile has changed/u);
+});
+test('self-edit mode produces an editable DOCX and chat mode renders the saved Harvard layout', async t => {
+  const { ws, profile } = await confirmSampleProfile(t);
+  const vacancy = await captureVacancy(ws, {
+    company: 'Example Organization', role: 'Support Analyst', text: 'Synthetic role requiring clear support summaries.',
+    url: 'https://example.invalid/jobs/support-edit-mode', portalId: 'example-support-edit-mode',
+  });
+  const draftInput=validMaterialInput(vacancy.id,profile);
+  const settings=ws.settings();settings.editingMode='self_edit';settings.resumeFormat='paragraph';ws.store.put('settings',settings);
+  const editable=await createMaterial(ws,draftInput);
+  assert.equal(editable.editingMode,'self_edit');
+  assert.equal(editable.resumeFormat,'paragraph');
+  assert.equal(typeof editable.files.docx,'string');
+  const editableBytes=ws.read(editable.files.docx);
+  assert.equal(editableBytes.subarray(0,2).toString('ascii'),'PK');
+  const docxText=(await mammoth.extractRawText({buffer:editableBytes})).value;
+  assert.match(docxText,/Example Candidate/u);
+  assert.match(docxText,/Completed a simulated customer-support exercise/u);
+  const paragraphHtml=ws.read(editable.files.html).toString('utf8');
+  assert.match(paragraphHtml,/<p class="claim">/u);
+  assert.doesNotMatch(paragraphHtml,/<ul class="resume-bullets">/u);
+
+  settings.editingMode='chat';settings.resumeFormat='bullet';ws.store.put('settings',settings);
+  const chat=await createMaterial(ws,{...draftInput,attemptId:editable.attemptId});
+  assert.equal(chat.editingMode,'chat');
+  assert.equal(chat.resumeFormat,'bullet');
+  assert.equal(chat.files.docx,undefined);
+  assert.match(ws.read(chat.files.html).toString('utf8'),/<ul class="resume-bullets">/u);
 });

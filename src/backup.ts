@@ -48,7 +48,8 @@ const SourceSchema = z.looseObject({
 const MaterialSchema = z.looseObject({
   id: IdentifierSchema, attemptId: IdentifierSchema, vacancyId: IdentifierSchema, profileId: IdentifierSchema,
   language: z.literal('en'), createdAt: z.string(),
-  files: z.object({ html: z.string(), pdf: z.string(), letter: z.string(), evidence: z.string() }).strict(),
+  editingMode: z.enum(['self_edit','chat']).optional(), resumeFormat: z.enum(['bullet','paragraph']).optional(),
+  files: z.object({ html: z.string(), pdf: z.string(), letter: z.string(), evidence: z.string(), docx: z.string().optional() }).strict(),
   fileHashes: z.record(z.string(), z.string().regex(HEX_SHA256)), manifestHash: z.string().regex(HEX_SHA256),
   title: z.string(), approvedAt: z.string().optional(),
 });
@@ -61,6 +62,8 @@ function verifyMaterialManifest(material: z.infer<typeof MaterialSchema>): void 
     language: material.language,
     files: material.files,
     fileHashes: material.fileHashes,
+    ...(material.editingMode?{editingMode:material.editingMode}:{}),
+    ...(material.resumeFormat?{resumeFormat:material.resumeFormat}:{}),
   }));
   if (expected !== material.manifestHash) throw new Error(`Material ${material.id} manifest hash does not match its records.`);
 }
@@ -293,7 +296,7 @@ function collectDocuments(ws: Workspace, state: SnapshotState, excludedPath: str
     const material = MaterialSchema.parse(rawMaterial);
     verifyMaterialManifest(material);
     const paths = Object.values(material.files);
-    if (paths.length !== 4 || new Set(paths).size !== 4 || Object.keys(material.fileHashes).length !== paths.length) {
+    if (paths.length !== (material.files.docx ? 5 : 4) || new Set(paths).size !== paths.length || Object.keys(material.fileHashes).length !== paths.length) {
       throw new Error(`Material ${material.id} has an invalid document manifest.`);
     }
     for (const path of paths) {
@@ -344,7 +347,7 @@ function validateArchiveFiles(state: SnapshotState, files: ArchiveDocument[], de
     const material = MaterialSchema.parse(rawMaterial);
     verifyMaterialManifest(material);
     const pathsForMaterial = Object.values(material.files);
-    if (pathsForMaterial.length !== 4 || new Set(pathsForMaterial).size !== 4 || Object.keys(material.fileHashes).length !== pathsForMaterial.length) {
+    if (pathsForMaterial.length !== (material.files.docx ? 5 : 4) || new Set(pathsForMaterial).size !== pathsForMaterial.length || Object.keys(material.fileHashes).length !== pathsForMaterial.length) {
       throw new Error(`Backup material ${material.id} has an invalid document manifest.`);
     }
     for (const value of pathsForMaterial) {
