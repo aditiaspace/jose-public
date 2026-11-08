@@ -72,7 +72,10 @@ async function main():Promise<void> {
       case 'profile-propose':result=proposeProfile(ws,jsonInput(args.values.input));break;
       case 'vacancy-add':result=await captureVacancy(ws,jsonInput(args.values.input));break;
       case 'vacancy-list':result=ws.store.list('vacancies');break;
-      case 'material-create':result=await createMaterial(ws,jsonInput(args.values.input));break;
+      case 'material-create':{
+        const material=await createMaterial(ws,jsonInput(args.values.input));
+        result={id:material.id,attemptId:material.attemptId,vacancyId:material.vacancyId,editingMode:material.editingMode,resumeFormat:material.resumeFormat,previewFile:material.editingMode==='self_edit'?material.files.docx:material.files.html};break;
+      }
       case 'material-export':result=await exportMaterial(ws,required(args.values.id,'--id'),required(args.values.out,'--out'));break;
       case 'material-edit-inspect':result=await inspectEditedDocx(ws,required(args.values.id,'--id'),args.values.file);break;
       case 'review':{
@@ -80,14 +83,14 @@ async function main():Promise<void> {
         if(kind==='profile'){
           const profile=ws.store.require<Profile>('profiles',entityId);
           if(profile.confirmedAt){result={alreadyApproved:true,profileId:profile.id};break;}
-          summary={kind,entityId,name:profile.name,facts:profile.facts.map(({id:factId,category,statement,sourceId,excerpt})=>({factId,category,statement,sourceId,quote:excerpt})),openQuestions:profile.openQuestions};
+          summary={kind,entityId,name:profile.name,aboutMe:profile.aboutMe,facts:profile.facts.map(({id:factId,category,statement,sourceId,excerpt})=>({factId,category,statement,sourceId,quote:excerpt})),openQuestions:profile.openQuestions,note:'Show the user the complete About Me summary in natural prose, not this internal fact-ID list.'};
         }else{
           const material=verifyMaterial(ws,entityId);
           attemptId=material.attemptId;
           if(material.approvedAt){result={alreadyApproved:true,materialId:material.id};break;}
           const evidence=JSON.parse(ws.read(material.files.evidence).toString('utf8')) as Record<string,unknown>;
           const vacancy=ws.store.require<Vacancy>('vacancies',material.vacancyId);
-          const reviewFiles=Object.fromEntries(Object.entries(material.files).filter(([fileKind])=>material.editingMode!=='self_edit'||fileKind!=='html'));
+          const reviewFiles=material.editingMode==='self_edit'?{docx:material.files.docx}:{html:material.files.html};
           summary={kind,entityId,materialId:material.id,attemptId:material.attemptId,title:material.title,vacancy:{company:vacancy.company,role:vacancy.role,url:vacancy.url??null},files:reviewFiles,manifestHash:material.manifestHash,claims:evidence.claims,letter:evidence.letter,...(typeof evidence.editedDocxText==='string'?{resumeText:evidence.editedDocxText}:{}),...(Array.isArray(evidence.docxConversionWarnings)?{docxConversionWarnings:evidence.docxConversionWarnings}:{}),...(typeof evidence.pdfRenderingNote==='string'?{pdfRenderingNote:evidence.pdfRenderingNote}:{}),reviewNote:evidence.reviewNote};
         }
         const binding=bindingFor(ws,kind,entityId);

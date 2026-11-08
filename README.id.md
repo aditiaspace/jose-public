@@ -25,7 +25,7 @@ CLI Jose dipasang di `.jose/` dalam folder yang sama. Data karier dan riwayat la
 
 ## Privasi dan alur kerja
 
-Sebelum memproses CV atau teks karier pribadi dengan hosted model, Jose menjelaskan bahwa konten terpilih dapat meninggalkan perangkat dan meminta persetujuan. Jika Anda punya CV, Anda bisa mengirimkannya setelah penjelasan itu; jika belum, onboarding mengumpulkan konteks bertahap dari jawaban Anda. Usulan fakta tetap belum terkonfirmasi sampai Anda memilihnya secara eksplisit di chat; Jose menyimpan pilihan itu secara lokal lalu memeriksa `context` sebelum menggunakannya. Jose tidak mengarang perusahaan, tanggal, angka, skill, atau pencapaian.
+Sebelum memproses CV atau teks karier pribadi dengan hosted model, Jose menjelaskan bahwa teks terpilih dapat dikirim ke provider dan meminta consent. CV opsional. Jose menyusun profil karier lengkap orang ketiga dalam bahasa percakapan Anda dari CV atau intake bertahap, dengan susunan seperti CV, nama pilihan Anda, dan detail yang didukung sumber. Rangkuman ditampilkan tanpa UUID/daftar fakta mentah; Jose meminta koreksi lalu menyimpan narasi dan fakta bersumber di workspace privat hanya setelah konfirmasi eksplisit.
 
 Kirim lowongan → tinjau dan revisi draft CV/resume English lewat chat → lamar sendiri lalu laporkan hasilnya. Scraper saved jobs dan assisted apply Jobstreet tetap tersedia lewat Playwright Jose yang terlihat; Anda menangani login, CAPTCHA/OTP, dan jawaban faktual. Disclosure sebelum upload dan submit final memerlukan approval chat yang terpisah dan terikat pada file serta target persis. Generic browser MCP dan tool computer-use untuk seluruh desktop tidak diaktifkan.
 

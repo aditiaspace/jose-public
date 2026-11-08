@@ -25,7 +25,7 @@ async function createProposal(t) {
   const notes=join(workspace,'sources','intake.txt');
   writeFileSync(notes,"User said: I organized a sample project and built a prototype.\nUser said: I also documented the team's process.\n");
   const source=await importSource(ws,notes);
-  const profile=proposeProfile(ws,{name:'Sample Person',facts:[
+  const profile=proposeProfile(ws,{name:'Sample Person',aboutMe:'Sample Person organized a project and documented the team process.',facts:[
     {category:'project',statement:'Organized a sample project and built a prototype.',sourceId:source.id,excerpt:'User said: I organized a sample project and built a prototype.'},
     {category:'process',statement:'Documented the team process.',sourceId:source.id,excerpt:"User said: I also documented the team's process."},
   ],preferences:{},openQuestions:['Ask which role the user wants.']});
@@ -49,12 +49,14 @@ test('a chat approval returns the exact proposed facts and persists only the IDs
   assert.equal(pending.reviewUrl,undefined);
   assert.equal(existsSync(join(workspace,'.jose-runtime','controller.json')),false);
   assert.deepEqual(pending.summary.facts.map(fact=>fact.factId),profile.facts.map(fact=>fact.id));
+  assert.equal(pending.summary.aboutMe,profile.aboutMe);
   assert.equal(pending.summary.facts[0].quote,profile.facts[0].excerpt);
 
   const decision=run(workspace,'approval-decide','--input',inputFile(parent,'decision',{requestId:pending.requestId,decision:'approve',selectedFactIds:[profile.facts[0].id]})).result;
   assert.equal(decision.state,'approved');
   const context=run(workspace,'context').result;
   assert.deepEqual(context.facts.map(fact=>fact.id),[profile.facts[0].id]);
+  assert.equal(context.aboutMe,null);
   assert.deepEqual(context.openQuestions,['Ask which role the user wants.']);
 });
 
@@ -67,4 +69,5 @@ test('a chat approval cannot silently confirm every fact when the user selected 
   const context=run(workspace,'context').result;
   assert.equal(context.profileId,null);
   assert.deepEqual(context.facts,[]);
+  assert.equal(context.aboutMe,null);
 });

@@ -544,7 +544,7 @@ export async function createMaterial(ws: Workspace, input: unknown): Promise<Mat
     evidence:`applications/${attemptId}/${materialId}/evidence.json`,
     ...(docxBytes?{docx:`applications/${attemptId}/${materialId}/resume.docx`}:{}),
   };
-  const reviewFiles=Object.fromEntries(Object.entries(files).filter(([kind])=>editingMode!=='self_edit'||kind!=='html'));
+  const reviewFiles:Record<string,string>=editingMode==='self_edit'?{docx:files.docx!}:{html:files.html};
 
   let browser: Browser | undefined;
   let pdfBytes: Uint8Array;

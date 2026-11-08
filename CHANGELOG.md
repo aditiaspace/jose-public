@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- Add a saved, full third-person About Me profile that the user verifies before Jose exposes it in context.
+- Simplify onboarding with a friendly welcome and name question; show chat-mode HTML drafts in a local browser preview when available, then ask for revisions before content approval and PDF export.
+- Keep existing v0.3 workspaces usable and offer a confirmed About Me summary without resetting their career facts.
 
 ## 0.3.0 — 2026-10-31
 

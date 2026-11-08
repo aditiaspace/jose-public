@@ -8,7 +8,7 @@ export interface Settings extends Entity {
 }
 export interface Source extends Entity { name: string; path: string; hash: string; text: string; warnings: string[]; createdAt: string; }
 export interface Fact { id: string; category: string; statement: string; sourceId: string; excerpt: string; confirmed: boolean; }
-export interface Profile extends Entity { name: string; facts: Fact[]; preferences: Record<string, string>; openQuestions: string[]; createdAt: string; confirmedAt?: string; }
+export interface Profile extends Entity { name: string; aboutMe?: string; facts: Fact[]; preferences: Record<string, string>; openQuestions: string[]; createdAt: string; confirmedAt?: string; }
 export interface Vacancy extends Entity { company: string; role: string; text: string; url?: string; portalId?: string; capturedAt: string; lastCheckedAt?: string; lifecycle?: 'live' | 'expired' | 'unknown'; notes: string; possibleDuplicates: string[]; }
 export interface Material extends Entity {
   attemptId: string; vacancyId: string; profileId: string; language: 'en'; letterLanguage?: 'en' | 'id'; createdAt: string;

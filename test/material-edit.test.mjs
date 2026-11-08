@@ -30,7 +30,7 @@ test('edited self-edit DOCX is checked, preserved in a new revision, and explici
   const editedText='Organized a sample support project.';
   writeFileSync(cv,`${excerpt}\n`);
   const source=await importSource(ws,cv);
-  const profile=proposeProfile(ws,{name:'Fictional Candidate',facts:[{category:'project',statement:excerpt,sourceId:source.id,excerpt}],preferences:{},openQuestions:[]});
+  const profile=proposeProfile(ws,{name:'Fictional Candidate',aboutMe:'Fictional Candidate organized a sample support project.',facts:[{category:'project',statement:excerpt,sourceId:source.id,excerpt}],preferences:{},openQuestions:[]});
   decideApproval(ws,ws.store.list('approvals').find(item=>item.action==='profile').id,true,[profile.facts[0].id]);
   const vacancy=await captureVacancy(ws,{company:'Example Organization',role:'Support Assistant',text:'Synthetic test vacancy.'});
   const material=await createMaterial(ws,{vacancyId:vacancy.id,language:'en',title:'Support Assistant',claims:[{section:'Projects',text:excerpt,factRefs:[{factId:profile.facts[0].id,quote:excerpt}]}],letter:{paragraphs:[{text:excerpt,factRefs:[{factId:profile.facts[0].id,quote:excerpt}]}]}});
@@ -68,6 +68,7 @@ test('edited self-edit DOCX is checked, preserved in a new revision, and explici
   assert.notEqual(revisedMaterial.id,material.id);
   assert.equal(revisedMaterial.attemptId,material.attemptId);
   assert.equal(revisedMaterial.approvedAt,undefined);
+  assert.match(revisedMaterial.previewFile,/resume\.docx$/u);
   assert.equal(ws.store.require('attempts',material.attemptId).materialId,revisedMaterial.id);
   assert.doesNotThrow(()=>verifyMaterial(ws,revisedMaterial.id));
   assert.equal(ws.store.list('approvals').find(item=>item.action==='content'&&item.entityId===revisedMaterial.id).state,'pending');
@@ -77,6 +78,8 @@ test('edited self-edit DOCX is checked, preserved in a new revision, and explici
   assert.match(review.summary.resumeText,/Organized a sample support project/u);
   assert.match(review.summary.pdfRenderingNote,/custom Word styling/u);
   assert.equal(review.summary.files.html,undefined);
+  assert.equal(review.summary.files.docx,revisedMaterial.previewFile);
+  assert.equal(review.summary.files.pdf,undefined);
   const decisionFile=join(ws.root,'state','approval.json');
   writeFileSync(decisionFile,JSON.stringify({requestId:review.requestId,decision:'approve'}));
   assert.equal(runCli(ws,'approval-decide',['--input',decisionFile]).result.state,'approved');

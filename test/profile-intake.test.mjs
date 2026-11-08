@@ -17,17 +17,20 @@ test('a user without a CV can confirm profile facts from their own intake notes'
   writeFileSync(notes,`${excerpt}\n`);
 
   const source=await importSource(ws,notes);
-  const proposal=proposeProfile(ws,{name:'Sample Person',facts:[{
+  const aboutMe='Sample Person has experience organizing projects and building prototypes.';
+  const proposal=proposeProfile(ws,{name:'Sample Person',aboutMe,facts:[{
     category:'project',statement:'Organized a class project and built a prototype.',sourceId:source.id,excerpt,
   }],preferences:{},openQuestions:['Ask which role the user wants to pursue.']});
   assert.equal(proposal.facts[0].confirmed,false);
   assert.equal(getContext(ws).profileId,null);
+  assert.equal(getContext(ws).aboutMe,null);
 
   const request=ws.store.list('approvals').find(item=>item.action==='profile');
   assert.ok(request);
   decideApproval(ws,request.id,true,[proposal.facts[0].id]);
   const context=getContext(ws);
   assert.equal(context.profileId,proposal.id);
+  assert.equal(context.aboutMe,aboutMe);
   assert.equal(context.facts[0].quote,excerpt);
   assert.deepEqual(context.openQuestions,['Ask which role the user wants to pursue.']);
 });

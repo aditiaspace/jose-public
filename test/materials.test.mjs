@@ -31,6 +31,7 @@ async function confirmSampleProfile(t) {
   const source = await importSource(ws, sourcePath);
   const proposed = proposeProfile(ws, {
     name: 'Example Candidate',
+    aboutMe: 'Example Candidate practiced organizing support tickets and summarizing their categories.',
     facts: [
       {
         category: 'project',
@@ -115,11 +116,13 @@ test('profile facts stay unconfirmed until local approval and quotes must be ver
   const source = await importSource(ws, sourcePath);
   assert.throws(() => proposeProfile(ws, {
     name: 'Example Candidate',
+    aboutMe: 'Example Candidate completed a fictional practice task.',
     facts: [{ category: 'skill', statement: 'A claim', sourceId: source.id, excerpt: 'This quote does not exist.' }],
   }), /not an exact excerpt/u);
 
   const proposed = proposeProfile(ws, {
     name: 'Example Candidate',
+    aboutMe: 'Example Candidate completed a simulated customer-support exercise.',
     facts: [{ category: 'project', statement: 'Completed a simulated exercise.', sourceId: source.id, excerpt: 'Completed a simulated customer-support exercise organizing 12 sample tickets by issue type.' }],
     openQuestions: ['No employment dates were provided.'],
   });
@@ -133,6 +136,7 @@ test('profile facts stay unconfirmed until local approval and quotes must be ver
   refreshContext(ws);
   assert.equal(JSON.parse(ws.read('context/current.json').toString('utf8')).profileId, proposed.id);
   assert.equal(getContext(ws).facts.length, 1);
+  assert.equal(getContext(ws).aboutMe,proposed.aboutMe);
   assert.match(getContext(ws).gaps.join('\n'), /No employment dates were provided/u);
 });
 
@@ -250,6 +254,7 @@ test('material output is evidence-bound, immutable across revisions, and exports
   const replacementSource = await importSource(ws, replacementPath);
   const replacementProfile = proposeProfile(ws, {
     name: 'Example Candidate',
+    aboutMe: 'Example Candidate reorganized practice materials.',
     facts: [{
       category: 'project',
       statement: 'Practice materials were reorganized.',

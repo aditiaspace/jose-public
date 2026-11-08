@@ -25,7 +25,7 @@ The installer places Jose's CLI under `.jose/` in this same folder. Career data 
 
 ## Privacy and workflow
 
-Before processing a CV or other personal career text with a hosted model, Jose explains that selected content may leave the device and asks for consent. If you have a CV, you can share it after that explanation; if not, onboarding gathers context gradually from your own answers. Proposed facts remain unconfirmed until you explicitly select them in chat; Jose persists the choice locally and checks `context` before using them. Jose never invents employers, dates, metrics, skills, or achievements.
+Before processing personal CV or career text with a hosted model, Jose explains that selected text may leave the device and asks for consent. A CV is optional. Jose turns the full CV or gradual intake into a complete, third-person career profile in readable CV-like sections, using the user's chosen name and only source-backed details. Jose shows the whole profile without UUIDs or raw fact lists, asks what to correct, and saves the narrative plus source-linked facts to the private workspace only after explicit confirmation.
 
 Send a vacancy → review and revise the English-tailored draft in chat → apply yourself and tell Jose what happened. Jobstreet saved-job scraping and assisted apply remain available through Jose's dedicated visible Playwright flow; you handle login, CAPTCHA/OTP, and factual answers. Upload disclosure and final submission require separate, explicit chat approvals bound to the exact files and target. Generic browser MCP and whole-desktop computer-use tools are not enabled.
 

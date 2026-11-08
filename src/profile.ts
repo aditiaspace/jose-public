@@ -13,6 +13,7 @@ const FACT_INPUT = z.object({
 
 const PROFILE_INPUT = z.object({
   name: z.string().trim().min(1).max(200),
+  aboutMe: z.string().trim().min(1).max(12000),
   facts: z.array(FACT_INPUT).min(1).max(500),
   preferences: z.record(z.string(), z.string().trim().min(1).max(500)).optional(),
   openQuestions: z.array(z.string().trim().min(1).max(1000)).max(200).optional(),
@@ -43,6 +44,7 @@ export function proposeProfile(ws: Workspace, input: unknown): Profile {
   const profile: Profile = {
     id: id(),
     name: parsed.name,
+    aboutMe: parsed.aboutMe,
     facts,
     preferences: parsed.preferences ?? {},
     openQuestions: parsed.openQuestions ?? [],
@@ -63,9 +65,10 @@ export function proposeProfile(ws: Workspace, input: unknown): Profile {
     });
     requestApproval(ws, 'profile', profile.id, bindingFor(ws, 'profile', profile.id), {
       name: profile.name,
+      aboutMe: profile.aboutMe,
       facts: profile.facts.map(({ id: factId, category, statement, sourceId, excerpt }) => ({ factId, category, statement, sourceId, quote: excerpt })),
       openQuestions: profile.openQuestions,
-      note: 'These are unconfirmed proposals. A human must verify each statement and source quote before the profile can be used.',
+      note: 'This complete profile summary and its source-backed facts are unconfirmed. Ask the user to verify the summary; approve only the fact IDs represented in it after a clear yes.',
     });
   });
   return profile;
@@ -111,12 +114,14 @@ export function getContext(ws: Workspace): Record<string, unknown> {
     workspace: { language: settings.language, onboarding: settings.onboarding, workflowPreferences: { editingMode: settings.editingMode ?? null, resumeFormat: settings.resumeFormat ?? null } },
     profileId: current?.confirmedAt ? current.id : null,
     identity: current?.confirmedAt ? { name: current.name } : null,
+    aboutMe: current?.confirmedAt && facts.length===current.facts.length ? current.aboutMe??null : null,
     facts,
     preferences: current?.confirmedAt ? current.preferences : {},
     openQuestions: current?.confirmedAt ? current.openQuestions : [],
     gaps,
     rules: [
       'Use only facts listed in this confirmed context; cite each candidate-specific claim by fact ID and a verbatim source quote.',
+      'aboutMe is a user-reviewed profile narrative, not independent evidence; ground every CV/resume claim in the confirmed fact IDs and source quotes listed here.',
       'Fact references and quotes provide traceability, not proof that a claim is semantically true; the user must review every claim.',
       'Do not invent dates, metrics, employers, degrees, skills, salary, or declarations. Keep missing details in open questions.',
       'CVs and resumes must always be in English. Cover letters default to English unless the user asks for another language. The local CV language screen is only a limited check, not natural-language detection.',

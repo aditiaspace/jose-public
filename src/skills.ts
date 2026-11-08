@@ -46,13 +46,13 @@ function agentsBlock():string {
 
 Use the Jose skill in \`.agents/skills/jose/SKILL.md\` for job-search work; Claude Code also has the equivalent under \`.claude/skills/jose/SKILL.md\`. Read \`instructions/jose.md\` before acting. Use the current harness's active workspace directory, verify it matches the folder the user opened, and never substitute Home or Documents. At the beginning of every session, read \`context/current.json\` if it exists and run \`node .jose/node_modules/jose-workspace/dist/cli.js context --workspace .\` from this workspace root.
 
-Use the active harness's existing LLM and credentials. Never request, inspect, copy, or change host credentials or global client settings. Use only the Jose CLI for workspace state. Before personal text is sent to a hosted model, explain provider data handling and obtain consent. Be friendly and brief. Keep CV/resume artifacts in English, use only confirmed source-backed facts, and handle every explicit approval in chat with \`approval-decide\`; reread the saved context/status before reporting success. Disclosure and final submission remain separate target-bound approvals.
+Use the active harness's existing LLM and credentials. Never request, inspect, copy, or change host credentials or global client settings. Use only the Jose CLI for workspace state. Before personal text is sent to a hosted model, explain provider data handling and obtain consent. Be friendly, brief, and conversational (saya/kamu in Indonesian); preserve natural English technical terms. Present the complete third-person About Me for review without UUIDs; save/use it only after explicit user confirmation. In chat mode, preview the local HTML CV before asking for revisions; do not paste the full CV into chat. Persist approvals with the Jose CLI, reread context/status, and keep disclosure and final submission as separate target-bound approvals.
 ${AGENTS_END}`;
 }
 
 function claudeBlock():string {
   return `${CLAUDE_START}
-For Jose job-search work in this folder, invoke the \`jose\` skill and follow \`instructions/jose.md\`. Use the active Claude Code model and its existing credentials; never ask for or change credentials. Keep Jose data in this folder and handle profile, materials, disclosure, and final-submit approval in chat, persisting decisions with Jose's CLI.
+For Jose work, follow the Jose skill and instructions/jose.md. Use Claude Code's existing model and credentials; never request or change keys. Keep Jose data in the active private folder. Present the full third-person About Me for review without IDs; do not treat it as saved before explicit confirmation. In chat mode, produce and locally preview HTML first, ask for revisions, then request approval before PDF export. Keep Jobstreet disclosure and final-submit approvals separate.
 ${CLAUDE_END}`;
 }
 
